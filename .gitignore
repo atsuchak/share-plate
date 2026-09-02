@@ -1,2 +1,4 @@
 /vendor/
 test_db.php
+config.php
+summary.md

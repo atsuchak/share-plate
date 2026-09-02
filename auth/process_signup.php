@@ -4,6 +4,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 require '../vendor/autoload.php';
+require '../config.php';
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $fullName = $_POST['fullname'];
@@ -50,12 +51,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $mail->isSMTP();
         $mail->Host       = 'smtp.gmail.com';
         $mail->SMTPAuth   = true;
-        $mail->Username   = 'suchak9931@gmail.com'; // Provided email
-        $mail->Password   = 'ttss tycv ryqn pppk'; // Provided App Password
+        $mail->Username   = SMTP_EMAIL; 
+        $mail->Password   = SMTP_PASSWORD; 
         $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
         $mail->Port       = 587;
 
-        $mail->setFrom('suchak9931@gmail.com', 'SharePlate');
+        $mail->setFrom(SMTP_EMAIL, 'SharePlate');
         $mail->addAddress($email, $fullName);
 
         $mail->isHTML(true);
