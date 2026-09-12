@@ -7,7 +7,7 @@ $conn = new mysqli('localhost', 'root', '', 'share_plate');
 date_default_timezone_set('Asia/Dhaka');
 
 // Fetch food listings
-$query = "SELECT * FROM food_listings WHERE status = 'Available' AND expiry_time >= NOW() ORDER BY created_at DESC";
+$query = "SELECT * FROM food_listings WHERE status = 'Available' ORDER BY created_at DESC";
 $result = $conn->query($query);
 $listings = [];
 while ($row = $result->fetch_assoc()) {
@@ -265,15 +265,27 @@ function getTimeRemaining($expiry_time) {
         
         <main class="dashboard-main">
             <header class="dashboard-header">
-                <div class="search-bar">
-                    <i class="fa-solid fa-magnifying-glass"></i>
-                    <input type="text" placeholder="Search donations, partners...">
+                <div class="header-left">
+                    <button class="mobile-menu-toggle" id="mobileMenuBtn">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div class="search-bar">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input type="text" placeholder="Search donations, partners...">
+                    </div>
                 </div>
                 <div class="header-actions">
                     <a href="dashboard/profile.php" class="user-profile" style="text-decoration: none; color: inherit;">
                         <div class="user-info">
                             <span class="user-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'User'); ?></span>
-                            <span class="user-id">#<?php echo substr(strtoupper(md5($_SESSION['user_id'] ?? 'E895')), 0, 4); ?></span>
+                            <span class="user-id">
+                            <?php 
+                                $rid = $_SESSION['role_id'] ?? 1;
+                                if ($rid == 1) echo 'Food Provider';
+                                elseif ($rid == 2) echo 'Community Member';
+                                elseif ($rid == 3) echo 'Administrator';
+                            ?>
+                        </span>
                         </div>
                         <div class="user-avatar">
                             <i class="fa-solid fa-user"></i>
@@ -344,6 +356,7 @@ function getTimeRemaining($expiry_time) {
                 }
             });
         }
+
     </script>
     <?php endif; ?>
     <script>

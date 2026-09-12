@@ -1099,4 +1099,10 @@ body.dark-theme .step-card.card-yellow {
     .mtm-content h2 { font-size: 2rem; }
     .footer-grid { grid-template-columns: 1fr; }
     .footer-bottom { flex-direction: column; gap: 16px; text-align: center; }
+    
+    /* Auth Pages Responsive */
+    .auth-container { padding: 30px 15px; }
+    .auth-card { padding: 40px 25px; }
+    .social-login { flex-direction: column; gap: 10px; }
+    .floating-impact-widget { display: none; /* Hide on mobile to save space */ }
 }

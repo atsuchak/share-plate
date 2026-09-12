@@ -1,27 +1,44 @@
+// Apply saved theme immediately
+if (localStorage.getItem("theme") === "dark") {
+    document.body.classList.add("dark-theme");
+}
+
 document.addEventListener("DOMContentLoaded", () => {
-    // Dark mode toggle functionality
+    // Dark mode toggle functionality (Landing page)
     const darkModeToggle = document.getElementById("darkModeToggle");
+    const dashToggle = document.getElementById("darkModeToggleDash"); // Dashboard inline toggle
+    const isDark = document.body.classList.contains("dark-theme");
+
     if (darkModeToggle) {
         const icon = darkModeToggle.querySelector("i");
-        const savedTheme = localStorage.getItem("theme");
-        if (savedTheme === "dark") {
-            document.body.classList.add("dark-theme");
+        if (isDark && icon) {
             icon.classList.remove("fa-moon");
             icon.classList.add("fa-sun");
         }
 
         darkModeToggle.addEventListener("click", () => {
             document.body.classList.toggle("dark-theme");
-            
-            if (document.body.classList.contains("dark-theme")) {
-                localStorage.setItem("theme", "dark");
-                icon.classList.remove("fa-moon");
-                icon.classList.add("fa-sun");
-            } else {
-                localStorage.setItem("theme", "light");
-                icon.classList.remove("fa-sun");
-                icon.classList.add("fa-moon");
+            const currentlyDark = document.body.classList.contains("dark-theme");
+            localStorage.setItem("theme", currentlyDark ? "dark" : "light");
+            if(icon) {
+                icon.classList.remove("fa-moon", "fa-sun");
+                icon.classList.add(currentlyDark ? "fa-sun" : "fa-moon");
             }
+        });
+    }
+
+    if (dashToggle) {
+        const icon = dashToggle.querySelector("i");
+        if (isDark && icon) {
+            icon.classList.remove("fa-moon");
+            icon.classList.add("fa-sun");
+        }
+        
+        dashToggle.addEventListener("click", () => {
+            setTimeout(() => {
+                const currentlyDark = document.body.classList.contains("dark-theme");
+                localStorage.setItem("theme", currentlyDark ? "dark" : "light");
+            }, 10);
         });
     }
 
@@ -69,5 +86,33 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
             });
         });
+    }
+
+    // Mobile menu toggle
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const sidebar = document.querySelector('.dashboard-sidebar');
+    let overlay = document.querySelector('.sidebar-overlay');
+    
+    // Create overlay if it doesn't exist but we are in dashboard
+    if (mobileMenuBtn && sidebar && !overlay) {
+        overlay = document.createElement('div');
+        overlay.className = 'sidebar-overlay';
+        document.body.appendChild(overlay);
+    }
+
+    if (mobileMenuBtn && sidebar) {
+        mobileMenuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('sidebar-open');
+            overlay.classList.toggle('show');
+            document.body.style.overflow = sidebar.classList.contains('sidebar-open') ? 'hidden' : '';
+        });
+
+        if (overlay) {
+            overlay.addEventListener('click', () => {
+                sidebar.classList.remove('sidebar-open');
+                overlay.classList.remove('show');
+                document.body.style.overflow = '';
+            });
+        }
     }
 });
