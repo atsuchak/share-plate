@@ -257,16 +257,28 @@ if (!isset($_SESSION['user_id'])) {
 
     <main class="dashboard-main">
         <header class="dashboard-header">
-            <div class="search-bar">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuBtn">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="search-bar">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input type="text" placeholder="Search...">
+            </div>
             </div>
             <div class="header-actions">
 
                 <a href="profile.php" class="user-profile" style="text-decoration: none; color: inherit;">
                     <div class="user-info">
                         <span class="user-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'User'); ?></span>
-                        <span class="user-id">#<?php echo substr(strtoupper(md5($_SESSION['user_id'] ?? 'E895')), 0, 4); ?></span>
+                        <span class="user-id">
+                            <?php 
+                                $rid = $_SESSION['role_id'] ?? 1;
+                                if ($rid == 1) echo 'Food Provider';
+                                elseif ($rid == 2) echo 'Community Member';
+                                elseif ($rid == 3) echo 'Administrator';
+                            ?>
+                        </span>
                     </div>
                     <div class="user-avatar">
                         <i class="fa-solid fa-user"></i>

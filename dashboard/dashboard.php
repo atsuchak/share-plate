@@ -39,6 +39,43 @@ function getFreshnessColor($createdAt, $expiryTime, $category) {
     }
 }
 
+// Unread Notifications for Popup
+$unread_count = 0;
+$popup_notifications = [];
+$uid = $_SESSION['user_id'];
+$res_notif = $conn->query("SELECT COUNT(*) as unread FROM notifications WHERE user_id = $uid AND is_read = 0");
+if ($res_notif && $row = $res_notif->fetch_assoc()) {
+    $unread_count = $row['unread'];
+}
+
+$res_notif_list = $conn->query("SELECT * FROM notifications WHERE user_id = $uid ORDER BY created_at DESC LIMIT 4");
+if ($res_notif_list && $res_notif_list->num_rows > 0) {
+    while($row = $res_notif_list->fetch_assoc()) {
+        $popup_notifications[] = $row;
+    }
+}
+
+if (!function_exists('time_elapsed_string')) {
+    function time_elapsed_string($datetime, $full = false) {
+        date_default_timezone_set('Asia/Dhaka');
+        $now = new DateTime;
+        $ago = new DateTime($datetime);
+        $diff = $now->diff($ago);
+        $diff->w = floor($diff->d / 7);
+        $diff->d -= $diff->w * 7;
+        $string = array('y' => 'year','m' => 'month','w' => 'week','d' => 'day','h' => 'hour','i' => 'minute','s' => 'second');
+        foreach ($string as $k => &$v) {
+            if ($diff->$k) {
+                $v = $diff->$k . ' ' . $v . ($diff->$k > 1 ? 's' : '');
+            } else {
+                unset($string[$k]);
+            }
+        }
+        if (!$full) $string = array_slice($string, 0, 1);
+        return $string ? implode(', ', $string) . ' ago' : 'just now';
+    }
+}
+
 $role_id = $_SESSION['role_id'] ?? 1;
 
 $recent_donations = [];
@@ -209,54 +246,63 @@ if ($role_id == 1) {
     <main class="dashboard-main">
         <!-- Header -->
         <header class="dashboard-header">
-            <div class="search-bar">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="text" placeholder="Search donations, partners...">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuBtn">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" placeholder="Search donations, partners...">
+                </div>
             </div>
             
             <div class="header-actions">
                 <div class="notification-wrapper" style="position: relative;">
                     <button class="action-btn notification-btn" id="notificationBtn">
                         <i class="fa-regular fa-bell"></i>
+                        <?php if($unread_count > 0): ?>
                         <span class="badge-dot"></span>
+                        <?php endif; ?>
                     </button>
                     <!-- Notifications Widget (Popup) -->
                     <div class="widget notifications-widget popup-hidden" id="notificationPopup">
                         <div class="widget-header">
                             <h3>Notifications</h3>
-                            <span class="badge-new">4 NEW</span>
+                            <?php if($unread_count > 0): ?>
+                            <span class="badge-new"><?php echo $unread_count; ?> NEW</span>
+                            <?php endif; ?>
                         </div>
                         <div class="notification-list">
-                            <div class="notification-item">
-                                <div class="notif-icon bg-green-light">
-                                    <i class="fa-solid fa-hand-holding-heart text-green"></i>
-                                </div>
-                                <div class="notif-content">
-                                    <h4>New donation request nearby</h4>
-                                    <p>"Community Kitchen" needs 20kg of fresh vegetables within 2 hours.</p>
-                                    <span class="notif-time">2 MINS AGO</span>
-                                </div>
-                            </div>
-                            <div class="notification-item">
-                                <div class="notif-icon bg-blue-light">
-                                    <i class="fa-solid fa-rocket text-blue"></i>
-                                </div>
-                                <div class="notif-content">
-                                    <h4>Milestone Reached! 🚀</h4>
-                                    <p>Incredible! Your contributions have now provided over 500 meals.</p>
-                                    <span class="notif-time">1 HOUR AGO</span>
-                                </div>
-                            </div>
-                            <div class="notification-item">
-                                <div class="notif-icon bg-yellow-light">
-                                    <i class="fa-solid fa-star text-yellow"></i>
-                                </div>
-                                <div class="notif-content">
-                                    <h4>Top Contributor Badge</h4>
-                                    <p>You've been ranked in the top 5% of donors in Seattle this week.</p>
-                                    <span class="notif-time">5 HOURS AGO</span>
-                                </div>
-                            </div>
+                            <?php if (empty($popup_notifications)): ?>
+                                <p style="text-align:center; color:#94a3b8; padding: 20px 0; font-size: 0.9rem;">No new notifications</p>
+                            <?php else: ?>
+                                <?php foreach($popup_notifications as $notif): 
+                                    $link = str_replace('dashboard/', '', $notif['link']);
+                                    $iconClass = 'fa-bell text-blue';
+                                    $bgClass = 'bg-blue-light';
+                                    if (stripos($notif['title'], 'New Claim') !== false || stripos($notif['title'], 'Request') !== false) {
+                                        $iconClass = 'fa-hand-holding-heart text-green';
+                                        $bgClass = 'bg-green-light';
+                                    } elseif (stripos($notif['title'], 'Accepted') !== false) {
+                                        $iconClass = 'fa-check-circle text-green';
+                                        $bgClass = 'bg-green-light';
+                                    } elseif (stripos($notif['title'], 'Alert') !== false || stripos($notif['title'], 'Expiring') !== false) {
+                                        $iconClass = 'fa-triangle-exclamation text-yellow';
+                                        $bgClass = 'bg-yellow-light';
+                                    }
+                                ?>
+                                <a href="<?php echo htmlspecialchars($link); ?>" class="notification-item" style="text-decoration:none; color:inherit; display:flex;">
+                                    <div class="notif-icon <?php echo $bgClass; ?>">
+                                        <i class="fa-solid <?php echo $iconClass; ?>"></i>
+                                    </div>
+                                    <div class="notif-content">
+                                        <h4><?php echo htmlspecialchars($notif['title']); ?></h4>
+                                        <p><?php echo htmlspecialchars(substr($notif['message'], 0, 60)) . (strlen($notif['message']) > 60 ? '...' : ''); ?></p>
+                                        <span class="notif-time"><?php echo strtoupper(time_elapsed_string($notif['created_at'])); ?></span>
+                                    </div>
+                                </a>
+                                <?php endforeach; ?>
+                            <?php endif; ?>
                         </div>
                         <a href="notifications.php" class="view-all-center">View all activity</a>
                     </div>
@@ -265,7 +311,14 @@ if ($role_id == 1) {
                 <a href="profile.php" class="user-profile" style="text-decoration: none; color: inherit;">
                     <div class="user-info">
                         <span class="user-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'User'); ?></span>
-                        <span class="user-id">#<?php echo htmlspecialchars(substr(strtoupper(md5($_SESSION['user_id'] ?? 'U123')), 0, 4)); ?></span>
+                        <span class="user-id">
+                            <?php 
+                                $rid = $_SESSION['role_id'] ?? 1;
+                                if ($rid == 1) echo 'Food Provider';
+                                elseif ($rid == 2) echo 'Community Member';
+                                elseif ($rid == 3) echo 'Administrator';
+                            ?>
+                        </span>
                     </div>
                     <div class="user-avatar">
                         <i class="fa-solid fa-user"></i>
@@ -278,7 +331,7 @@ if ($role_id == 1) {
             <?php if ($role_id == 3): ?>
             <!-- Admin Dashboard -->
             <div class="dashboard-col-main" style="width: 100%;">
-                <div class="stats-row" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="stats-row admin-stats-row">
                     <div class="stat-card">
                         <div class="stat-info">
                             <span class="stat-title">TOTAL USERS</span>
@@ -324,7 +377,7 @@ if ($role_id == 1) {
                     </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 30px; margin-top: 30px;">
+                <div class="admin-grid-layout">
                     
                     <!-- Left: Signups Chart -->
                     <div class="chart-container" style="background: white; border-radius: 20px; padding: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.02);">
@@ -544,7 +597,7 @@ if ($role_id == 1) {
                         <h2>Quality food,<br>ready for pickup.</h2>
                         <p>Browse fresh, high-quality surplus meals and ingredients from local restaurants and grocers. Claim what you need instantly.</p>
                         <div class="impact-actions">
-                            <button class="btn-primary" onclick="window.location.href='../marketplace.php'">Browse Marketplace <i class="fa-solid fa-arrow-right"></i></button>
+                            <button class="btn-primary" onclick="window.location.href='../marketplace.php'">Browse Foods <i class="fa-solid fa-arrow-right"></i></button>
                         </div>
                     </div>
                 </div>

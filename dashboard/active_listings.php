@@ -53,7 +53,7 @@ if ($result && $result->num_rows > 0) {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/styles.css">
-    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../assets/css/dashboard.css?v=4">
 </head>
 <body class="dashboard-body">
 
@@ -63,16 +63,28 @@ if ($result && $result->num_rows > 0) {
     <!-- Main Content -->
     <main class="dashboard-main">
         <header class="dashboard-header">
-            <div class="search-bar">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="text" placeholder="Search your listings...">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuBtn">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" placeholder="Search your listings...">
+                </div>
             </div>
             <div class="header-actions">
 
                 <a href="profile.php" class="user-profile" style="text-decoration: none; color: inherit;">
                     <div class="user-info">
                         <span class="user-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'User'); ?></span>
-                        <span class="user-id">#<?php echo htmlspecialchars(substr(strtoupper(md5($_SESSION['user_id'] ?? 'E895')), 0, 4)); ?></span>
+                        <span class="user-id">
+                            <?php 
+                                $rid = $_SESSION['role_id'] ?? 1;
+                                if ($rid == 1) echo 'Food Provider';
+                                elseif ($rid == 2) echo 'Community Member';
+                                elseif ($rid == 3) echo 'Administrator';
+                            ?>
+                        </span>
                     </div>
                     <div class="user-avatar">
                         <i class="fa-solid fa-user"></i>
@@ -89,7 +101,7 @@ if ($result && $result->num_rows > 0) {
                     <p>These are your foods currently available for pickup.</p>
                 </div>
                 <div style="display: flex; gap: 10px;">
-                    <a href="incoming_requests.php" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 8px; border: 1px solid #cbd5e1; background: #f8fafc; color: var(--secondary-dark); padding: 10px 20px; border-radius: 50px; font-weight: 600; text-decoration: none;"><i class="fa-solid fa-bell" style="color: #f59e0b;"></i> Incoming Requests</a>
+                    <a href="incoming_requests.php" class="top-action-btn"><i class="fa-solid fa-bell" style="color: #f59e0b;"></i> Incoming Requests</a>
                     <a href="post_food.php" class="btn-primary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 8px;"><i class="fa-solid fa-circle-plus"></i> Post Food</a>
                 </div>
             </div>
@@ -112,8 +124,8 @@ if ($result && $result->num_rows > 0) {
                         
                         $imgSrc = $item['image_path'] ? htmlspecialchars($item['image_path']) : '../assets/img/just-a-meal.png';
                     ?>
-                    <div class="activity-item-wrapper <?php echo $borderClass; ?>" style="background: #ffffff; border-radius: 16px; margin-bottom: 15px; border-left-width: 4px; border-left-style: solid; box-shadow: 0 4px 6px rgba(0,0,0,0.02); display: flex; flex-direction: column; overflow: hidden;">
-                        <div class="activity-item" style="margin-bottom: 0; border: none; box-shadow: none; border-radius: 0; background: transparent; padding: 20px;">
+                    <div class="activity-item-wrapper req-card <?php echo $borderClass; ?>" style="border-radius: 16px; margin-bottom: 15px; border-left-width: 4px; border-left-style: solid; box-shadow: 0 4px 6px rgba(0,0,0,0.02); display: flex; flex-direction: column; overflow: hidden;">
+                        <div class="activity-item" style="margin-bottom: 0; border: none; box-shadow: none; border-radius: 0; background: transparent; padding: 15px;">
                         <div class="activity-img">
                             <img src="<?php echo $imgSrc; ?>" alt="Food">
                         </div>

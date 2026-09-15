@@ -277,16 +277,28 @@ $stmt->close();
 
     <main class="dashboard-main">
         <header class="dashboard-header">
-            <div class="search-bar">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuBtn">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="search-bar">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input type="text" placeholder="Search settings...">
+            </div>
             </div>
             <div class="header-actions">
 
                 <a href="profile.php" class="user-profile" style="text-decoration: none; color: inherit;">
                     <div class="user-info">
                         <span class="user-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'User'); ?></span>
-                        <span class="user-id">#<?php echo substr(strtoupper(md5($_SESSION['user_id'] ?? 'E895')), 0, 4); ?></span>
+                        <span class="user-id">
+                            <?php 
+                                $rid = $_SESSION['role_id'] ?? 1;
+                                if ($rid == 1) echo 'Food Provider';
+                                elseif ($rid == 2) echo 'Community Member';
+                                elseif ($rid == 3) echo 'Administrator';
+                            ?>
+                        </span>
                     </div>
                     <div class="user-avatar">
                         <i class="fa-solid fa-user"></i>
@@ -420,9 +432,11 @@ $stmt->close();
             settingsToggle.addEventListener('change', (e) => {
                 if (e.target.checked) {
                     document.body.classList.add('dark-theme');
+                    localStorage.setItem('theme', 'dark');
                     if(dashToggle) dashToggle.querySelector('i').className = 'fa-solid fa-sun';
                 } else {
                     document.body.classList.remove('dark-theme');
+                    localStorage.setItem('theme', 'light');
                     if(dashToggle) dashToggle.querySelector('i').className = 'fa-regular fa-moon';
                 }
             });
@@ -433,6 +447,7 @@ $stmt->close();
             dashToggle.addEventListener('click', () => {
                 document.body.classList.toggle('dark-theme');
                 const isDark = document.body.classList.contains('dark-theme');
+                localStorage.setItem('theme', isDark ? 'dark' : 'light');
                 
                 const icon = dashToggle.querySelector('i');
                 if (isDark) {

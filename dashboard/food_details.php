@@ -36,6 +36,24 @@ if ($result->num_rows === 0) {
 $food = $result->fetch_assoc();
 $stmt->close();
 
+// Fetch total requests (all claims)
+$req_sql = "SELECT COUNT(*) as total_requests FROM food_claims WHERE food_id = ?";
+$req_stmt = $conn->prepare($req_sql);
+$req_stmt->bind_param("i", $food_id);
+$req_stmt->execute();
+$req_result = $req_stmt->get_result();
+$total_requests = $req_result->fetch_assoc()['total_requests'];
+$req_stmt->close();
+
+// Fetch approved claims
+$app_sql = "SELECT COUNT(*) as approved_claims FROM food_claims WHERE food_id = ? AND status = 'Approved'";
+$app_stmt = $conn->prepare($app_sql);
+$app_stmt->bind_param("i", $food_id);
+$app_stmt->execute();
+$app_result = $app_stmt->get_result();
+$approved_claims = $app_result->fetch_assoc()['approved_claims'];
+$app_stmt->close();
+
 function getFreshnessColor($createdAt, $expiryTime, $category) {
     $now = time();
     $expiry = strtotime($expiryTime);
@@ -101,6 +119,17 @@ $expiryTimeJS = date('Y-m-d\TH:i:s', strtotime($food['expiry_time']));
         }
         @media (max-width: 1024px) {
             .food-details-grid { grid-template-columns: 1fr; }
+        }
+        .info-cards-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 35px;
+        }
+        @media (max-width: 768px) {
+            .info-cards-grid {
+                grid-template-columns: 1fr;
+            }
         }
         .hero-img-container {
             width: 100%;
@@ -352,16 +381,28 @@ $expiryTimeJS = date('Y-m-d\TH:i:s', strtotime($food['expiry_time']));
     <!-- Main Content -->
     <main class="dashboard-main">
         <header class="dashboard-header">
-            <div class="search-bar">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuBtn">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="search-bar">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input type="text" placeholder="Search...">
+            </div>
             </div>
             <div class="header-actions">
 
                 <a href="profile.php" class="user-profile" style="text-decoration: none; color: inherit;">
                     <div class="user-info">
                         <span class="user-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'User'); ?></span>
-                        <span class="user-id">#<?php echo htmlspecialchars(substr(strtoupper(md5($_SESSION['user_id'] ?? 'E895')), 0, 4)); ?></span>
+                        <span class="user-id">
+                            <?php 
+                                $rid = $_SESSION['role_id'] ?? 1;
+                                if ($rid == 1) echo 'Food Provider';
+                                elseif ($rid == 2) echo 'Community Member';
+                                elseif ($rid == 3) echo 'Administrator';
+                            ?>
+                        </span>
                     </div>
                     <div class="user-avatar">
                         <i class="fa-solid fa-user"></i>
@@ -425,7 +466,7 @@ $expiryTimeJS = date('Y-m-d\TH:i:s', strtotime($food['expiry_time']));
                         <?php echo nl2br(htmlspecialchars($food['details'])); ?>
                     </p>
                     
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 35px;">
+                    <div class="info-cards-grid">
                         <div style="background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0; display: flex; flex-direction: column;">
                             <i class="fa-solid fa-temperature-arrow-down" style="color: #3b82f6; font-size: 1.5rem; margin-bottom: 12px;"></i>
                             <h5 style="color: var(--secondary-dark); margin-bottom: 5px; font-size: 1.05rem;">Storage Guidelines</h5>
@@ -460,7 +501,7 @@ $expiryTimeJS = date('Y-m-d\TH:i:s', strtotime($food['expiry_time']));
                         
                         <?php if($food['donor_id'] != $_SESSION['user_id']): ?>
                             <?php if($food['status'] === 'Available'): ?>
-                                <button class="btn-claim" id="openClaimModalBtn">Claim This Food <i class="fa-solid fa-arrow-right"></i></button>
+                                <button class="btn-claim" id="openClaimModalBtn">Request Food <i class="fa-solid fa-arrow-right"></i></button>
                                 <span class="no-cost-text">No-cost donation</span>
                             <?php else: ?>
                                 <button class="btn-claim disabled"><?php echo strtoupper($food['status']); ?></button>
@@ -474,13 +515,13 @@ $expiryTimeJS = date('Y-m-d\TH:i:s', strtotime($food['expiry_time']));
                         <div class="stats-row-small">
                             <div class="stat-small">
                                 <i class="fa-solid fa-users"></i>
-                                <strong><?php echo (int)$food['claims_count']; ?> Claims</strong>
+                                <strong><?php echo (int)$total_requests; ?> Requests</strong>
                                 <span>TOTAL</span>
                             </div>
                             <div class="stat-small">
-                                <i class="fa-solid fa-leaf"></i>
-                                <strong><?php echo number_format($food['quantity'] * 0.5, 1); ?>kg CO2</strong>
-                                <span>EST. SAVED</span>
+                                <i class="fa-solid fa-check-to-slot"></i>
+                                <strong><?php echo (int)$approved_claims; ?> Claims</strong>
+                                <span>APPROVED</span>
                             </div>
                         </div>
                         
@@ -503,7 +544,7 @@ $expiryTimeJS = date('Y-m-d\TH:i:s', strtotime($food['expiry_time']));
     <div id="claimModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
         <div class="modal-content" style="background: white; padding: 30px; border-radius: 20px; width: 90%; max-width: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 style="margin: 0; font-size: 1.5rem; color: #1e293b;">Claim Food Request</h3>
+                <h3 style="margin: 0; font-size: 1.5rem; color: #1e293b;">Request Food</h3>
                 <button id="closeClaimModalBtn" style="background: none; border: none; font-size: 1.5rem; color: #64748b; cursor: pointer;">&times;</button>
             </div>
             <form action="process_claim.php" method="POST">
@@ -532,7 +573,7 @@ $expiryTimeJS = date('Y-m-d\TH:i:s', strtotime($food['expiry_time']));
                 
                 <div style="display: flex; justify-content: flex-end; gap: 15px;">
                     <button type="button" id="cancelClaimBtn" style="padding: 10px 20px; border-radius: 50px; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; font-weight: 600; cursor: pointer;">Cancel</button>
-                    <button type="submit" style="padding: 10px 24px; border-radius: 50px; border: none; background: var(--primary-green); color: white; font-weight: 600; cursor: pointer;">Submit Claim Request</button>
+                    <button type="submit" style="padding: 10px 24px; border-radius: 50px; border: none; background: var(--primary-green); color: white; font-weight: 600; cursor: pointer;">Submit Request</button>
                 </div>
             </form>
         </div>

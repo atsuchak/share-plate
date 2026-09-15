@@ -70,8 +70,13 @@ if ($user['role_id'] == 1) {
     <main class="dashboard-main">
         <!-- Header -->
         <header class="dashboard-header">
-            <div class="search-bar">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuBtn">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="search-bar">
                 <!-- Empty for alignment -->
+            </div>
             </div>
             
             <div class="header-actions">

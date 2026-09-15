@@ -71,13 +71,8 @@ try {
     $stmt->bind_param("iissss", $food_id, $receiver_id, $message, $contact_number, $address, $reason);
     $stmt->execute();
     
-    // Update claims_count and decrement quantity
-    $stmt = $conn->prepare("UPDATE food_listings SET claims_count = claims_count + 1, quantity = quantity - 1 WHERE id = ?");
-    $stmt->bind_param("i", $food_id);
-    $stmt->execute();
-    
-    // Check if quantity hit 0, mark as Completed
-    $stmt = $conn->prepare("UPDATE food_listings SET status = 'Completed' WHERE id = ? AND quantity <= 0");
+    // Update claims_count
+    $stmt = $conn->prepare("UPDATE food_listings SET claims_count = claims_count + 1 WHERE id = ?");
     $stmt->bind_param("i", $food_id);
     $stmt->execute();
     

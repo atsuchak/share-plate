@@ -37,15 +37,23 @@ $root_prefix = $in_root ? '' : '../';
         <li>
             <a href="<?php echo $root_prefix; ?>marketplace.php" class="nav-item <?php echo ($currentPage == 'marketplace.php') ? 'active' : ''; ?>">
                 <i class="fa-solid fa-store"></i>
-                <span>Marketplace</span>
+                <span>Browse</span>
+            </a>
+        </li>
+        <?php endif; ?>
+        <?php if ($role_id == 2): ?>
+        <li>
+            <a href="<?php echo $dash_prefix; ?>requested_food.php" class="nav-item <?php echo ($currentPage == 'requested_food.php') ? 'active' : ''; ?>">
+                <i class="fa-solid fa-hand-holding-heart"></i>
+                <span>Requested Food</span>
             </a>
         </li>
         <?php endif; ?>
         <?php if ($role_id == 1): ?>
         <li>
-            <a href="<?php echo $dash_prefix; ?>post_food.php" class="nav-item <?php echo ($currentPage == 'post_food.php') ? 'active' : ''; ?>">
-                <i class="fa-solid fa-circle-plus"></i>
-                <span>Post Food</span>
+            <a href="<?php echo $dash_prefix; ?>incoming_requests.php" class="nav-item <?php echo ($currentPage == 'incoming_requests.php') ? 'active' : ''; ?>">
+                <i class="fa-solid fa-inbox"></i>
+                <span>Incoming Requests</span>
             </a>
         </li>
         <?php endif; ?>
@@ -88,10 +96,6 @@ $root_prefix = $in_root ? '' : '../';
     </ul>
 
     <div class="sidebar-bottom">
-        <a href="<?php echo $dash_prefix; ?>how_it_works.php" class="nav-item <?php echo ($currentPage == 'how_it_works.php') ? 'active' : ''; ?>">
-            <i class="fa-solid fa-circle-question"></i>
-            <span>How it works</span>
-        </a>
         <a href="<?php echo $dash_prefix; ?>settings.php" class="nav-item <?php echo ($currentPage == 'settings.php') ? 'active' : ''; ?>">
             <i class="fa-solid fa-gear"></i>
             <span>Settings</span>

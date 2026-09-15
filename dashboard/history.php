@@ -64,6 +64,31 @@ if ($result && $result->num_rows > 0) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="../assets/css/styles.css">
     <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <style>
+        @media (max-width: 768px) {
+            .post-food-content {
+                margin: 0 5px 15px !important;
+                padding: 15px 10px !important;
+            }
+            .btn-history {
+                width: 100%;
+                justify-content: center;
+                margin-top: 10px;
+            }
+            .activity-item .btn-view-details {
+                width: 100%;
+                margin-left: 0;
+                margin-top: 10px;
+            }
+        }
+        @media (max-width: 480px) {
+            .post-food-content {
+                margin: 0 0 15px !important;
+                padding: 15px 10px !important;
+                border-radius: 12px !important;
+            }
+        }
+    </style>
 </head>
 <body class="dashboard-body">
 
@@ -73,16 +98,28 @@ if ($result && $result->num_rows > 0) {
     <!-- Main Content -->
     <main class="dashboard-main">
         <header class="dashboard-header">
-            <div class="search-bar">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="text" placeholder="Search your history...">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuBtn">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" placeholder="Search your history...">
+                </div>
             </div>
             <div class="header-actions">
 
                 <a href="profile.php" class="user-profile" style="text-decoration: none; color: inherit;">
                     <div class="user-info">
                         <span class="user-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'User'); ?></span>
-                        <span class="user-id">#<?php echo htmlspecialchars(substr(strtoupper(md5($_SESSION['user_id'] ?? 'E895')), 0, 4)); ?></span>
+                        <span class="user-id">
+                            <?php 
+                                $rid = $_SESSION['role_id'] ?? 1;
+                                if ($rid == 1) echo 'Food Provider';
+                                elseif ($rid == 2) echo 'Community Member';
+                                elseif ($rid == 3) echo 'Administrator';
+                            ?>
+                        </span>
                     </div>
                     <div class="user-avatar">
                         <i class="fa-solid fa-user"></i>
@@ -147,7 +184,7 @@ if ($result && $result->num_rows > 0) {
                             <?php echo htmlspecialchars($displayStatus); ?>
                         </div>
                         <?php if($item['donor_id'] != $_SESSION['user_id']): ?>
-                        <a href="init_conversation.php?food_id=<?php echo $item['id']; ?>" class="btn-view-details" title="Message Donor" style="background-color: var(--primary-green); color: white; display: inline-flex; align-items: center; gap: 6px;">
+                        <a href="init_conversation.php?food_id=<?php echo $item['id']; ?>" class="btn-view-details" title="Message Donor" style="background-color: var(--primary-green); color: white; border: none; gap: 6px;">
                             <i class="fa-solid fa-message"></i> Message
                         </a>
                         <?php endif; ?>

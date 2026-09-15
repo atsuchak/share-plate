@@ -13,6 +13,11 @@ $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
 $stmt->close();
 
+// Restore actual name to session in case it was overwritten during testing
+if ($user && isset($user['full_name'])) {
+    $_SESSION['full_name'] = $user['full_name'];
+}
+
 $role = ($user['role_id'] == 1) ? 'Donor' : 'Receiver';
 
 // Compute stats
@@ -318,6 +323,78 @@ if ($recent_result && $recent_result->num_rows > 0) {
         body.dark-theme .timeline-dot { border-color: #1e293b; box-shadow: 0 0 0 2px #334155; }
         body.dark-theme .timeline-content { background: #0f172a; border-color: #334155; }
         body.dark-theme .timeline-content h4 { color: #f8fafc; }
+
+        /* Responsive */
+        .hero-cover-container {
+            position: relative;
+            margin-bottom: 80px;
+        }
+
+        @media (max-width: 1024px) {
+            .profile-content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        @media (max-width: 768px) {
+            .post-food-content {
+                margin: 0 !important;
+                padding: 10px !important;
+            }
+            .profile-header-card {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                bottom: -130px;
+                left: 15px;
+                right: 15px;
+                padding: 20px 15px;
+                gap: 15px;
+            }
+            .profile-avatar-xl {
+                margin-top: -60px;
+                width: 100px;
+                height: 100px;
+                font-size: 3rem;
+            }
+            .cover-photo {
+                height: 180px;
+                border-radius: 20px;
+            }
+            .hero-cover-container {
+                margin-bottom: 150px;
+            }
+            .stats-overview {
+                grid-template-columns: 1fr;
+            }
+            .profile-content-grid {
+                gap: 15px;
+            }
+            .info-panel, .timeline-panel, .stat-card-premium {
+                padding: 15px;
+            }
+        }
+        @media (max-width: 480px) {
+            .post-food-content {
+                padding: 5px !important;
+            }
+            .profile-header-card {
+                bottom: -140px;
+                left: 10px;
+                right: 10px;
+            }
+            .hero-cover-container {
+                margin-bottom: 160px;
+            }
+            .stat-value {
+                font-size: 2rem;
+            }
+            .profile-title-area h1 {
+                font-size: 1.8rem;
+            }
+            .btn-edit {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body class="dashboard-body">
@@ -326,16 +403,28 @@ if ($recent_result && $recent_result->num_rows > 0) {
 
     <main class="dashboard-main">
         <header class="dashboard-header">
-            <div class="search-bar">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="text" placeholder="Search your dashboard...">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuBtn">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" placeholder="Search your dashboard...">
+                </div>
             </div>
             <div class="header-actions">
 
                 <a href="profile.php" class="user-profile" style="text-decoration: none; color: inherit;">
                     <div class="user-info">
                         <span class="user-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'User'); ?></span>
-                        <span class="user-id">#<?php echo substr(strtoupper(md5($_SESSION['user_id'] ?? 'E895')), 0, 4); ?></span>
+                        <span class="user-id">
+                            <?php 
+                                $rid = $_SESSION['role_id'] ?? 1;
+                                if ($rid == 1) echo 'Food Provider';
+                                elseif ($rid == 2) echo 'Community Member';
+                                elseif ($rid == 3) echo 'Administrator';
+                            ?>
+                        </span>
                     </div>
                     <div class="user-avatar">
                         <i class="fa-solid fa-user"></i>
@@ -348,7 +437,7 @@ if ($recent_result && $recent_result->num_rows > 0) {
             <div class="profile-wrapper">
                 
                 <!-- Hero Cover -->
-                <div style="position: relative; margin-bottom: 80px;">
+                <div class="hero-cover-container">
                     <div class="cover-photo">
                     </div>
                     <div class="profile-header-card">

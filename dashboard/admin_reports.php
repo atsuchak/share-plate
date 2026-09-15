@@ -34,9 +34,14 @@ if (isset($_SESSION['role_id']) && $_SESSION['role_id'] != 3) {
     <main class="dashboard-main">
         <!-- Header -->
         <header class="dashboard-header">
-            <div class="search-bar">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuBtn">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="search-bar">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input type="text" placeholder="Search reports...">
+            </div>
             </div>
             
             <div class="header-actions">

@@ -115,6 +115,14 @@ if ($result && $result->num_rows > 0) {
             color: #9ca3af;
             font-weight: 600;
         }
+        @media (max-width: 768px) {
+            .notifications-page-list {
+                padding: 10px;
+            }
+            .notifications-page-list .notification-item {
+                padding: 10px;
+            }
+        }
     </style>
 </head>
 <body class="dashboard-body">
@@ -125,16 +133,28 @@ if ($result && $result->num_rows > 0) {
     <!-- Main Content -->
     <main class="dashboard-main">
         <header class="dashboard-header">
-            <div class="search-bar">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="text" placeholder="Search notifications...">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuBtn">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" placeholder="Search notifications...">
+                </div>
             </div>
             <div class="header-actions">
 
                 <a href="profile.php" class="user-profile" style="text-decoration: none; color: inherit;">
                     <div class="user-info">
                         <span class="user-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'User'); ?></span>
-                        <span class="user-id">#<?php echo htmlspecialchars(substr(strtoupper(md5($_SESSION['user_id'] ?? 'E895')), 0, 4)); ?></span>
+                        <span class="user-id">
+                            <?php 
+                                $rid = $_SESSION['role_id'] ?? 1;
+                                if ($rid == 1) echo 'Food Provider';
+                                elseif ($rid == 2) echo 'Community Member';
+                                elseif ($rid == 3) echo 'Administrator';
+                            ?>
+                        </span>
                     </div>
                     <div class="user-avatar">
                         <i class="fa-solid fa-user"></i>
@@ -196,5 +216,13 @@ if ($result && $result->num_rows > 0) {
     </main>
 
     <script src="../assets/js/script.js"></script>
+    <script>
+        const dashToggle = document.getElementById('darkModeToggleDash');
+        if (dashToggle) {
+            dashToggle.addEventListener('click', () => {
+                document.body.classList.toggle('dark-theme');
+            });
+        }
+    </script>
 </body>
 </html>

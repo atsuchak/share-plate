@@ -47,9 +47,14 @@ if ($result && $result->num_rows > 0) {
     <main class="dashboard-main">
         <!-- Header -->
         <header class="dashboard-header">
-            <div class="search-bar">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuBtn">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="search-bar">
                 <i class="fa-solid fa-magnifying-glass"></i>
                 <input type="text" placeholder="Search users...">
+            </div>
             </div>
             
             <div class="header-actions">
@@ -74,6 +79,7 @@ if ($result && $result->num_rows > 0) {
                 </div>
 
                 <div style="background: white; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.03); padding: 30px;">
+                    <div class="table-responsive">
                     <table style="width: 100%; border-collapse: collapse;">
                         <thead>
                             <tr style="border-bottom: 2px solid #f1f5f9; text-align: left;">
@@ -123,6 +129,7 @@ if ($result && $result->num_rows > 0) {
                             <?php endif; ?>
                         </tbody>
                     </table>
+                    </div>
                 </div>
 
             </div>

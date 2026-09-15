@@ -51,11 +51,31 @@ while($row = $chart_result->fetch_assoc()) {
 $stmt->close();
 
 // Fetch Table Data (Top Performing)
-$table_sql = "SELECT title, category, status, claims_count, created_at FROM food_listings WHERE donor_id = ? ORDER BY claims_count DESC, created_at DESC LIMIT 5";
+$table_sql = "SELECT title, category, status, claims_count, created_at, expiry_time FROM food_listings WHERE donor_id = ? ORDER BY claims_count DESC, created_at DESC LIMIT 5";
 $stmt = $conn->prepare($table_sql);
 $stmt->bind_param("i", $user_id);
 $stmt->execute();
+$stmt->execute();
 $top_listings = $stmt->get_result();
+$stmt->close();
+
+// Fetch All Data for Report
+$report_sql = "SELECT 
+    f.title, 
+    f.category, 
+    COUNT(c.id) as user_claims_count,
+    MAX(c.created_at) as claim_time, 
+    u.full_name as claimer_name 
+FROM food_listings f 
+LEFT JOIN food_claims c ON f.id = c.food_id AND c.status = 'Approved'
+LEFT JOIN users u ON c.receiver_id = u.id 
+WHERE f.donor_id = ? 
+GROUP BY f.id, f.title, f.category, f.created_at, u.id, u.full_name
+ORDER BY f.created_at DESC, claim_time DESC";
+$stmt = $conn->prepare($report_sql);
+$stmt->bind_param("i", $user_id);
+$stmt->execute();
+$report_data = $stmt->get_result();
 $stmt->close();
 
 ?>
@@ -77,11 +97,39 @@ $stmt->close();
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        @media print {
+            /* Remove everything else from document flow to prevent blank pages */
+            .sidebar, .dashboard-header, .analytics-wrapper {
+                display: none !important;
+            }
+            #printReport {
+                display: block !important;
+                width: 100%;
+                margin: 0;
+            }
+            html, body {
+                background: #fff !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                height: auto !important;
+                min-height: auto !important;
+            }
+            .dashboard-main, .post-food-content {
+                margin: 0 !important;
+                padding: 0 !important;
+                min-height: auto !important;
+            }
+            @page {
+                margin: 1cm;
+            }
+        }
+        
         .analytics-wrapper {
             max-width: 1400px;
             margin: 0 auto;
             font-family: 'Inter', sans-serif;
             padding-bottom: 40px;
+            overflow: hidden; /* Prevent horizontal overflow */
         }
         
         /* KPI Row */
@@ -167,6 +215,7 @@ $stmt->close();
             position: relative;
             height: 350px;
             width: 100%;
+            max-width: 100%;
         }
 
         /* Table Section */
@@ -239,6 +288,7 @@ $stmt->close();
         }
         .status-active { background: #dcfce7; color: #166534; }
         .status-completed { background: #f1f5f9; color: #475569; }
+        .status-expired { background: #fee2e2; color: #b91c1c; }
         
         .claims-badge {
             background: #fef3c7;
@@ -280,6 +330,57 @@ $stmt->close();
         body.dark-theme .food-icon { background: #0f172a; }
         body.dark-theme .btn-export { background: #334155; color: #f8fafc; }
         body.dark-theme .status-completed { background: #334155; color: #cbd5e1; }
+        body.dark-theme .status-expired { background: #7f1d1d; color: #fca5a5; }
+
+        @media (max-width: 1024px) {
+            .kpi-row {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        @media (max-width: 768px) {
+            .kpi-row {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+            .section-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+            .kpi-card {
+                padding: 12px 15px;
+            }
+            .kpi-info h4 {
+                font-size: 0.75rem;
+                margin-bottom: 5px;
+            }
+            .kpi-info .kpi-value {
+                font-size: 1.5rem;
+                flex-wrap: wrap;
+                gap: 5px;
+            }
+            .chart-container {
+                height: 180px;
+                width: 100%;
+                max-width: 100%;
+                margin: 0 auto;
+            }
+            .table-section {
+                padding: 15px;
+            }
+            .custom-table th, .custom-table td {
+                padding: 10px;
+            }
+        }
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        * {
+            box-sizing: border-box;
+        }
     </style>
 </head>
 <body class="dashboard-body">
@@ -288,19 +389,35 @@ $stmt->close();
 
     <main class="dashboard-main">
         <header class="dashboard-header">
-            <div class="search-bar">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="text" placeholder="Search analytics...">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuBtn">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" placeholder="Search analytics...">
+                </div>
             </div>
             <div class="header-actions">
 
                 <a href="profile.php" class="user-profile" style="text-decoration: none; color: inherit;">
                     <div class="user-info">
                         <span class="user-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'User'); ?></span>
-                        <span class="user-id">#<?php echo substr(strtoupper(md5($_SESSION['user_id'] ?? 'E895')), 0, 4); ?></span>
+                        <span class="user-id">
+                            <?php 
+                                $rid = $_SESSION['role_id'] ?? 1;
+                                if ($rid == 1) echo 'Food Provider';
+                                elseif ($rid == 2) echo 'Community Member';
+                                elseif ($rid == 3) echo 'Administrator';
+                            ?>
+                        </span>
                     </div>
                     <div class="user-avatar">
-                        <i class="fa-solid fa-user"></i>
+                        <?php if(!empty($_SESSION['profile_image'])): ?>
+                            <img src="../uploads/profiles/<?php echo htmlspecialchars($_SESSION['profile_image']); ?>" alt="Profile" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">
+                        <?php else: ?>
+                            <i class="fa-solid fa-user"></i>
+                        <?php endif; ?>
                     </div>
                 </a>
             </div>
@@ -358,14 +475,16 @@ $stmt->close();
 
                 <!-- Table Section -->
                 <div class="table-section">
-                    <div class="section-header">
+                    <div class="section-header" style="margin-bottom: 15px;">
                         <div>
                             <h2>Top Performing Listings</h2>
                             <p>Your most claimed and engaged food items</p>
                         </div>
-                        <button class="btn-export"><i class="fa-solid fa-download"></i> Export Report</button>
+                        <button id="exportBtn" class="btn-export"><i class="fa-solid fa-download"></i> Export Report</button>
                     </div>
+                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 20px;">
                     
+                    <div class="table-responsive">
                     <table class="custom-table">
                         <thead>
                             <tr>
@@ -396,8 +515,15 @@ $stmt->close();
                                         </div>
                                     </td>
                                     <td>
-                                        <?php if($item['status'] === 'Available'): ?>
-                                            <span class="status-pill status-active">Active</span>
+                                        <?php 
+                                        $isExpired = (strtotime($item['expiry_time']) < time());
+                                        if($item['status'] === 'Available'): 
+                                            if($isExpired):
+                                        ?>
+                                                <span class="status-pill status-expired">Expired</span>
+                                            <?php else: ?>
+                                                <span class="status-pill status-active">Active</span>
+                                            <?php endif; ?>
                                         <?php else: ?>
                                             <span class="status-pill status-completed">Completed</span>
                                         <?php endif; ?>
@@ -409,9 +535,44 @@ $stmt->close();
                             <?php endif; ?>
                         </tbody>
                     </table>
+                    </div>
                 </div>
 
             </div>
+        </div>
+        
+        <!-- Hidden Printable Report -->
+        <div id="printReport" style="display: none;">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h1 style="margin: 0; font-size: 24px; color: #000; font-family: sans-serif;">SharePlate Analytics Report</h1>
+                <p style="margin: 5px 0 0 0; font-size: 14px; color: #555; font-family: sans-serif;">Food Listings and Claims Overview</p>
+            </div>
+            <table style="width: 100%; border-collapse: collapse; font-family: sans-serif; font-size: 12px; color: #000;">
+                <thead>
+                    <tr>
+                        <th style="border: 1px solid #000; padding: 8px; text-align: left; background-color: #f2f2f2;">Food Item Name</th>
+                        <th style="border: 1px solid #000; padding: 8px; text-align: left; background-color: #f2f2f2;">Category</th>
+                        <th style="border: 1px solid #000; padding: 8px; text-align: center; background-color: #f2f2f2;">Quantity Claimed</th>
+                        <th style="border: 1px solid #000; padding: 8px; text-align: left; background-color: #f2f2f2;">Claimed By</th>
+                        <th style="border: 1px solid #000; padding: 8px; text-align: left; background-color: #f2f2f2;">Claim Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if($report_data->num_rows > 0): ?>
+                        <?php while($row = $report_data->fetch_assoc()): ?>
+                        <tr>
+                            <td style="border: 1px solid #000; padding: 8px;"><?php echo htmlspecialchars($row['title']); ?></td>
+                            <td style="border: 1px solid #000; padding: 8px;"><?php echo htmlspecialchars($row['category']); ?></td>
+                            <td style="border: 1px solid #000; padding: 8px; text-align: center;"><?php echo (int)$row['user_claims_count']; ?></td>
+                            <td style="border: 1px solid #000; padding: 8px;"><?php echo $row['claimer_name'] ? htmlspecialchars($row['claimer_name']) : 'N/A'; ?></td>
+                            <td style="border: 1px solid #000; padding: 8px;"><?php echo $row['claim_time'] ? date('M d, Y g:i A', strtotime($row['claim_time'])) : 'N/A'; ?></td>
+                        </tr>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr><td colspan="5" style="border: 1px solid #000; padding: 8px; text-align: center;">No data available.</td></tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
         </div>
     </main>
 
@@ -519,6 +680,11 @@ $stmt->close();
         
         // Initial theme set
         updateChartTheme();
+
+        // Print Logic
+        document.getElementById('exportBtn').addEventListener('click', function() {
+            window.print();
+        });
     </script>
 </body>
 </html>

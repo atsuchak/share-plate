@@ -57,6 +57,7 @@ while($row = $conversations_result->fetch_assoc()) {
     $conversations[] = $row;
 }
 
+$is_chat_active = isset($_GET['conv_id']);
 $active_conv_id = isset($_GET['conv_id']) ? (int)$_GET['conv_id'] : (count($conversations) > 0 ? $conversations[0]['id'] : null);
 $active_conv = null;
 $messages = [];
@@ -259,6 +260,62 @@ if ($active_conv_id) {
         body.dark-theme .msg-received { background: #1e293b; border-color: #334155; color: #f8fafc; }
         body.dark-theme .chat-input-area { background: #1e293b; border-color: #334155; }
         body.dark-theme .chat-input { background: #0f172a; border-color: #334155; color: #f8fafc; }
+        
+        /* Responsive Design */
+        @media (max-width: 992px) {
+            .conv-list-panel {
+                width: 250px;
+            }
+        }
+        @media (max-width: 768px) {
+            .messenger-container {
+                height: calc(100vh - 120px);
+                flex-direction: row;
+            }
+            .messenger-container.mobile-list-active .conv-list-panel {
+                width: 100%;
+                border-right: none;
+            }
+            .messenger-container.mobile-list-active .chat-panel {
+                display: none;
+            }
+            .messenger-container.mobile-chat-active .conv-list-panel {
+                display: none;
+            }
+            .messenger-container.mobile-chat-active .chat-panel {
+                width: 100%;
+            }
+            .mobile-back-btn {
+                display: flex !important;
+            }
+        }
+        @media (max-width: 480px) {
+            .messenger-container {
+                height: calc(100vh - 140px);
+            }
+            .conv-list-panel {
+                flex: 0 0 40%;
+            }
+            .msg-bubble {
+                max-width: 90%;
+            }
+            .chat-header {
+                padding: 12px 15px;
+            }
+            .chat-input-area {
+                padding: 12px 15px;
+            }
+            .btn-send {
+                width: 45px;
+                height: 45px;
+            }
+            .conv-item {
+                padding: 10px 15px;
+            }
+            .conv-list-header {
+                padding: 15px;
+            }
+        }
     </style>
 </head>
 <body class="dashboard-body">
@@ -266,16 +323,28 @@ if ($active_conv_id) {
 
     <main class="dashboard-main">
         <header class="dashboard-header">
-            <div class="search-bar">
-                <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="text" placeholder="Search...">
+            <div class="header-left">
+                <button class="mobile-menu-toggle" id="mobileMenuBtn">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="search-bar">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" placeholder="Search...">
+                </div>
             </div>
             <div class="header-actions">
 
                 <a href="profile.php" class="user-profile" style="text-decoration: none; color: inherit;">
                     <div class="user-info">
                         <span class="user-name"><?php echo htmlspecialchars($_SESSION['full_name'] ?? 'User'); ?></span>
-                        <span class="user-id">#<?php echo htmlspecialchars(substr(strtoupper(md5($_SESSION['user_id'] ?? 'E895')), 0, 4)); ?></span>
+                        <span class="user-id">
+                            <?php 
+                                $rid = $_SESSION['role_id'] ?? 1;
+                                if ($rid == 1) echo 'Food Provider';
+                                elseif ($rid == 2) echo 'Community Member';
+                                elseif ($rid == 3) echo 'Administrator';
+                            ?>
+                        </span>
                     </div>
                     <div class="user-avatar"><i class="fa-solid fa-user"></i></div>
                 </a>
@@ -283,7 +352,7 @@ if ($active_conv_id) {
         </header>
 
         <div class="post-food-content" style="background: transparent; border: none; box-shadow: none; padding-top: 10px;">
-            <div class="messenger-container">
+            <div class="messenger-container <?php echo $is_chat_active ? 'mobile-chat-active' : 'mobile-list-active'; ?>">
                 <!-- Left Panel -->
                 <div class="conv-list-panel">
                     <div class="conv-list-header">Inbox</div>
@@ -314,6 +383,9 @@ if ($active_conv_id) {
                         $img = $active_conv['image_path'] ? htmlspecialchars($active_conv['image_path']) : '../assets/img/just-a-meal.png';
                     ?>
                         <div class="chat-header">
+                            <a href="messages.php" class="mobile-back-btn" style="display: none; margin-right: 15px; font-size: 1.2rem; color: var(--secondary-dark); text-decoration: none;">
+                                <i class="fa-solid fa-arrow-left"></i>
+                            </a>
                             <img src="<?php echo $img; ?>" class="conv-avatar" alt="Food">
                             <div>
                                 <h3 style="margin: 0; font-size: 1.1rem; color: var(--secondary-dark);"><?php echo htmlspecialchars($other_person); ?></h3>

@@ -14,6 +14,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $pickup_location = trim($_POST['pickup_location']);
     $contact_info = trim($_POST['contact_info']);
     $expiry_time = $_POST['expiry_time'];
+    if (strlen($expiry_time) == 10) {
+        $expiry_time .= ' 23:59:59';
+    }
     
     // Handle File Upload
     $image_path = '';
@@ -41,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         exit();
     }
 
-    $stmt = $conn->prepare("INSERT INTO food_listings (donor_id, title, details, quantity, category, pickup_location, contact_info, expiry_time, image_path) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt = $conn->prepare("INSERT INTO food_listings (donor_id, title, details, quantity, category, pickup_location, contact_info, expiry_time, image_path, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Available')");
     $stmt->bind_param("ississsss", $donor_id, $title, $details, $quantity, $category, $pickup_location, $contact_info, $expiry_time, $image_path);
     
     if ($stmt->execute()) {
@@ -55,30 +58,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // Fetch all receivers
         $res = $conn->query("SELECT id, email, full_name, email_notifications, in_app_notifications FROM users WHERE role_id = 2");
         
-        // Prepare PHPMailer if we have any emails to send
+        // Prepare emails
         require '../vendor/autoload.php';
-        $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
-        $mail_setup = false;
-        
-        try {
-            $mail->isSMTP();
-            $mail->Host       = 'smtp.gmail.com';
-            $mail->SMTPAuth   = true;
-            $mail->Username   = 'suchak9931@gmail.com';
-            $mail->Password   = 'ttss tycv ryqn pppk';
-            $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port       = 587;
-            $mail->setFrom('suchak9931@gmail.com', 'SharePlate Alerts');
-            $mail->Subject = 'New Food Alert - SharePlate';
-            $mail->isHTML(true);
-            $mail->Body = "<h2>New Food Available</h2><p>$notif_message</p><p><a href='http://localhost/SharePlate/marketplace.php'>View Marketplace</a></p>";
-            $mail_setup = true;
-        } catch (Exception $e) {
-            // Mail setup failed, skip email sending
-            $mail_setup = false;
-        }
+        require '../config.php';
+        $resend = Resend::client(RESEND_API_KEY);
+        $bcc_emails = [];
 
-        $email_count = 0;
         if ($res && $res->num_rows > 0) {
             while ($receiver = $res->fetch_assoc()) {
                 // In-App Notification
@@ -90,18 +75,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
                 
                 // Email Notification via BCC
-                if ($receiver['email_notifications'] == 1 && $mail_setup) {
-                    $mail->addBCC($receiver['email'], $receiver['full_name']);
-                    $email_count++;
+                if ($receiver['email_notifications'] == 1) {
+                    $bcc_emails[] = $receiver['email'];
                 }
             }
         }
         
         // Send email if there are recipients
-        if ($email_count > 0 && $mail_setup) {
+        if (count($bcc_emails) > 0) {
             try {
-                $mail->send();
-            } catch (Exception $e) {
+                // Resend requires a 'to' address
+                $resend->emails->send([
+                    'from' => 'SharePlate Alerts <noreply@atsuchak.me>',
+                    'to' => ['noreply@atsuchak.me'],
+                    'bcc' => $bcc_emails,
+                    'subject' => 'New Food Alert - SharePlate',
+                    'html' => "<h2>New Food Available</h2><p>$notif_message</p><p><a href='http://localhost/SharePlate/marketplace.php'>View Marketplace</a></p>"
+                ]);
+            } catch (\Exception $e) {
                 // Log or ignore email send failure
             }
         }
