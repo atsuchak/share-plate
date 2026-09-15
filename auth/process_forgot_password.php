@@ -1,7 +1,5 @@
 <?php
 session_start();
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
 
 require '../vendor/autoload.php';
 require '../config.php';
@@ -52,23 +50,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $_SESSION['reset_is_admin'] = $isAdmin;
 
     // Send Email
-    $mail = new PHPMailer(true);
+    $resend = Resend::client(RESEND_API_KEY);
 
     try {
-        $mail->isSMTP();
-            $mail->Host       = 'smtp.gmail.com';
-            $mail->SMTPAuth   = true;
-            $mail->Username   = SMTP_EMAIL;
-            $mail->Password   = SMTP_PASSWORD;
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port       = 587;
-
-            $mail->setFrom(SMTP_EMAIL, 'SharePlate Security');
-            $mail->addAddress($email, $user['full_name']);
-
-        $mail->isHTML(true);
-        $mail->Subject = 'SharePlate - Password Recovery Code';
-        $mail->Body    = "
+        $htmlBody = "
         <div style='font-family: Inter, sans-serif; background: #f0f4f8; padding: 40px; text-align: center;'>
             <div style='background: #fff; padding: 30px; border-radius: 10px; max-width: 500px; margin: auto;'>
                 <h2 style='color: #ef4444;'>Password Recovery</h2>
@@ -81,12 +66,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
         </div>";
 
-        $mail->send();
+        $resend->emails->send([
+            'from' => 'SharePlate Security <noreply@atsuchak.me>',
+            'to' => [$email],
+            'subject' => 'SharePlate - Password Recovery Code',
+            'html' => $htmlBody,
+        ]);
         
         header("Location: verify_reset.php");
         exit();
     } catch (Exception $e) {
-        $_SESSION['error_message'] = "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
+        $_SESSION['error_message'] = "Message could not be sent. Mailer Error: {$e->getMessage()}";
         header("Location: forgot_password.php");
         exit();
     }

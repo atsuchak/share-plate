@@ -2,7 +2,7 @@
 session_start();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $enteredCode = $_POST['code'];
+    $enteredCode = str_replace(' ', '', trim($_POST['code']));
 
     if (!isset($_SESSION['reset_code']) || !isset($_SESSION['reset_email'])) {
         $_SESSION['error_message'] = "Session expired. Please request a new code.";

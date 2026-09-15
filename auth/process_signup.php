@@ -1,7 +1,5 @@
 <?php
 session_start();
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
 
 require '../vendor/autoload.php';
 require '../config.php';
@@ -45,23 +43,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $_SESSION['verification_code'] = $verificationCode;
 
     // Send Email
-    $mail = new PHPMailer(true);
+    $resend = Resend::client(RESEND_API_KEY);
 
     try {
-        $mail->isSMTP();
-        $mail->Host       = 'smtp.gmail.com';
-        $mail->SMTPAuth   = true;
-        $mail->Username   = SMTP_EMAIL; 
-        $mail->Password   = SMTP_PASSWORD; 
-        $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-        $mail->Port       = 587;
-
-        $mail->setFrom(SMTP_EMAIL, 'SharePlate');
-        $mail->addAddress($email, $fullName);
-
-        $mail->isHTML(true);
-        $mail->Subject = 'Verify your SharePlate Account';
-        $mail->Body    = "
+        $htmlBody = "
         <div style='font-family: Inter, sans-serif; background: #f0f4f8; padding: 40px; text-align: center;'>
             <div style='background: #fff; padding: 30px; border-radius: 10px; max-width: 500px; margin: auto;'>
                 <h2 style='color: #0d7756;'>Welcome to SharePlate!</h2>
@@ -74,12 +59,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             </div>
         </div>";
 
-        $mail->send();
+        $resend->emails->send([
+            'from' => 'SharePlate <noreply@atsuchak.me>',
+            'to' => [$email],
+            'subject' => 'Verify your SharePlate Account',
+            'html' => $htmlBody,
+        ]);
         
         header("Location: verify.php");
         exit();
     } catch (Exception $e) {
-        echo "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
+        echo "Message could not be sent. Mailer Error: {$e->getMessage()}";
     }
 } else {
     header("Location: signup.php");

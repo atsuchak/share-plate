@@ -2,7 +2,7 @@
 session_start();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $enteredCode = $_POST['code'];
+    $enteredCode = str_replace(' ', '', trim($_POST['code']));
 
     if (!isset($_SESSION['verification_code']) || !isset($_SESSION['signup_data'])) {
         $_SESSION['error_message'] = "Session expired. Please sign up again.";
