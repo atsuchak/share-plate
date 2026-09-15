@@ -35,9 +35,9 @@ function getTimeRemaining($expiry_time) {
     }
     $countdown .= $diff->i . 'm';
     
-    if ($hours < 2) {
+    if ($hours <= 24) {
         return ['text' => 'URGENT', 'class' => 'tag-urgent', 'countdown' => $countdown];
-    } elseif ($hours < 6) {
+    } elseif ($hours <= 48) {
         return ['text' => 'EXPIRING SOON', 'class' => 'tag-soon', 'countdown' => $countdown];
     } else {
         return ['text' => 'VERY FRESH', 'class' => 'tag-fresh', 'countdown' => $countdown];
@@ -287,9 +287,15 @@ function getTimeRemaining($expiry_time) {
                             ?>
                         </span>
                         </div>
-                        <div class="user-avatar">
+                        <?php 
+                        $prefix = isset($root_prefix) ? $root_prefix : (basename($_SERVER['PHP_SELF']) == 'marketplace.php' ? '' : '../');
+                        $avatarUrl = !empty($_SESSION['profile_image']) ? $prefix . $_SESSION['profile_image'] : '';
+                    ?>
+                    <div class="user-avatar" style="<?php echo $avatarUrl ? 'background-image: url(\'' . htmlspecialchars($avatarUrl) . '\'); background-size: cover; background-position: center;' : ''; ?>">
+                        <?php if(!$avatarUrl): ?>
                             <i class="fa-solid fa-user"></i>
-                        </div>
+                        <?php endif; ?>
+                    </div>
                     </a>
                 </div>
             </header>
