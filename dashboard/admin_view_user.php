@@ -75,8 +75,9 @@ if ($user['role_id'] == 1) {
                     <i class="fa-solid fa-bars"></i>
                 </button>
                 <div class="search-bar">
-                <!-- Empty for alignment -->
-            </div>
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" placeholder="Search users...">
+                </div>
             </div>
             
             <div class="header-actions">
