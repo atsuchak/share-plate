@@ -32,6 +32,12 @@ $root_prefix = $in_root ? '' : '../';
                 <span>Users</span>
             </a>
         </li>
+        <li>
+            <a href="<?php echo $dash_prefix; ?>admin_audit.php" class="nav-item <?php echo ($currentPage == 'admin_audit.php') ? 'active' : ''; ?>">
+                <i class="fa-solid fa-clipboard-list"></i>
+                <span>Audit Logs</span>
+            </a>
+        </li>
         <?php endif; ?>
         <?php if ($role_id == 1 || $role_id == 2): ?>
         <li>
@@ -57,13 +63,15 @@ $root_prefix = $in_root ? '' : '../';
             </a>
         </li>
         <?php endif; ?>
-        <?php if ($role_id == 1 || $role_id == 2): ?>
+        <?php if ($role_id == 1 || $role_id == 2 || $role_id == 3): ?>
         <li>
             <a href="<?php echo $dash_prefix; ?>messages.php" class="nav-item <?php echo ($currentPage == 'messages.php') ? 'active' : ''; ?>">
                 <i class="fa-solid fa-message"></i>
                 <span>Messages</span>
             </a>
         </li>
+        <?php endif; ?>
+        <?php if ($role_id == 1 || $role_id == 2): ?>
         <li>
             <a href="<?php echo $dash_prefix; ?>history.php" class="nav-item <?php echo ($currentPage == 'history.php') ? 'active' : ''; ?>">
                 <i class="fa-solid fa-clock-rotate-left"></i>
@@ -77,7 +85,8 @@ $root_prefix = $in_root ? '' : '../';
             </a>
         </li>
         <?php endif; ?>
-        <?php if ($role_id == 1 || $role_id == 3): ?>
+        <?php //if ($role_id == 1 || $role_id == 3): ?>
+        <?php if ($role_id == 3): ?>
         <li>
             <a href="<?php echo $dash_prefix; ?><?php echo $role_id == 3 ? 'admin_analytics.php' : 'analytics.php'; ?>" class="nav-item <?php echo ($currentPage == 'analytics.php' || $currentPage == 'admin_analytics.php') ? 'active' : ''; ?>">
                 <i class="fa-solid fa-chart-pie"></i>

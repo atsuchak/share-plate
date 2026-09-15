@@ -57,30 +57,19 @@ $app_stmt->close();
 function getFreshnessColor($createdAt, $expiryTime, $category) {
     $now = time();
     $expiry = strtotime($expiryTime);
-    $created = strtotime($createdAt);
     
-    if ($expiry - $now <= 24 * 3600) {
-        return 'red';
-    }
+    $hoursRemaining = ($expiry - $now) / 3600;
     
-    $hoursSinceCreation = ($now - $created) / 3600;
-    
-    if ($category === 'Other' || $category === 'Fresh Produce' || $category === 'Dairy & Eggs') {
-        if ($hoursSinceCreation <= 24) return 'green';
-        elseif ($hoursSinceCreation <= 48) return 'yellow';
-        else return 'red';
-    } else {
-        if ($hoursSinceCreation <= 12) return 'green';
-        elseif ($hoursSinceCreation <= 24) return 'yellow';
-        else return 'red';
-    }
+    if ($hoursRemaining <= 24) return 'red';
+    elseif ($hoursRemaining <= 48) return 'yellow';
+    else return 'green';
 }
 
 $freshnessColor = getFreshnessColor($food['created_at'], $food['expiry_time'], $food['category']);
 $statusClass = 'status-' . $freshnessColor;
 $isExpired = (strtotime($food['expiry_time']) < time());
 if ($food['status'] === 'Available') {
-    $displayStatus = $isExpired ? 'EXPIRED' : (($freshnessColor === 'red') ? 'EXPIRING SOON' : 'AVAILABLE');
+    $displayStatus = $isExpired ? 'EXPIRED' : (($freshnessColor === 'red') ? 'URGENT' : (($freshnessColor === 'yellow') ? 'EXPIRING SOON' : 'VERY FRESH'));
 } else {
     $displayStatus = strtoupper($food['status']);
 }
@@ -257,8 +246,9 @@ $expiryTimeJS = date('Y-m-d\TH:i:s', strtotime($food['expiry_time']));
             top: 40px;
         }
         .portions-number {
-            font-family: 'Playfair Display', serif;
-            font-size: 5rem;
+            font-family: 'Inter', sans-serif;
+            font-weight: 800;
+            font-size: 4.5rem;
             color: var(--primary-green);
             line-height: 1;
             margin-bottom: 5px;
@@ -404,8 +394,14 @@ $expiryTimeJS = date('Y-m-d\TH:i:s', strtotime($food['expiry_time']));
                             ?>
                         </span>
                     </div>
-                    <div class="user-avatar">
-                        <i class="fa-solid fa-user"></i>
+                    <?php 
+                        $prefix = isset($root_prefix) ? $root_prefix : (basename($_SERVER['PHP_SELF']) == 'marketplace.php' ? '' : '../');
+                        $avatarUrl = !empty($_SESSION['profile_image']) ? $prefix . $_SESSION['profile_image'] : '';
+                    ?>
+                    <div class="user-avatar" style="<?php echo $avatarUrl ? 'background-image: url(\'' . htmlspecialchars($avatarUrl) . '\'); background-size: cover; background-position: center;' : ''; ?>">
+                        <?php if(!$avatarUrl): ?>
+                            <i class="fa-solid fa-user"></i>
+                        <?php endif; ?>
                     </div>
                 </a>
             </div>
@@ -494,22 +490,25 @@ $expiryTimeJS = date('Y-m-d\TH:i:s', strtotime($food['expiry_time']));
                         </div>
                         
                         <?php if($food['donor_id'] != $_SESSION['user_id']): ?>
-                            <a href="init_conversation.php?food_id=<?php echo $food['id']; ?>" class="btn-claim" style="background-color: var(--primary-green); color: white; margin-bottom: 15px;">
-                                <i class="fa-solid fa-message"></i> Message Donor
-                            </a>
-                        <?php endif; ?>
-                        
-                        <?php if($food['donor_id'] != $_SESSION['user_id']): ?>
                             <?php if($food['status'] === 'Available'): ?>
-                                <button class="btn-claim" id="openClaimModalBtn">Request Food <i class="fa-solid fa-arrow-right"></i></button>
-                                <span class="no-cost-text">No-cost donation</span>
+                                <button class="btn-claim" id="openClaimModalBtn" style="margin-bottom: 10px;">Request Food <i class="fa-solid fa-arrow-right"></i></button>
+                                <span class="no-cost-text" style="margin-bottom: 20px; display: block;">No-cost donation</span>
                             <?php else: ?>
-                                <button class="btn-claim disabled"><?php echo strtoupper($food['status']); ?></button>
-                                <span class="no-cost-text">This food is no longer available</span>
+                                <button class="btn-claim disabled" style="margin-bottom: 10px;"><?php echo strtoupper($food['status']); ?></button>
+                                <span class="no-cost-text" style="margin-bottom: 20px; display: block;">This food is no longer available</span>
                             <?php endif; ?>
+                            
+                            <div style="display: flex; gap: 15px; width: 100%; margin-bottom: 30px;">
+                                <a href="init_conversation.php?food_id=<?php echo $food['id']; ?>" class="btn-claim" style="flex: 1; margin-bottom: 0; background-color: #f8fafc; color: var(--secondary-dark); border: 1px solid #e2e8f0; font-size: 1rem; padding: 12px; box-shadow: none;">
+                                    <i class="fa-solid fa-message" style="color: var(--primary-green);"></i> Message
+                                </a>
+                                <button type="button" class="btn-claim" id="openComplainModalBtn" style="flex: 1; background-color: #fef2f2; color: #ef4444; border: 1px solid #fecaca; margin-bottom: 0; font-size: 1rem; padding: 12px; box-shadow: none;">
+                                    <i class="fa-solid fa-flag"></i> Report
+                                </button>
+                            </div>
                         <?php else: ?>
-                            <button class="btn-claim disabled" style="background-color: #f1f5f9; color: #64748b; box-shadow: none;">Your Listing</button>
-                            <span class="no-cost-text">You cannot claim your own food</span>
+                            <button class="btn-claim disabled" style="background-color: #f1f5f9; color: #64748b; box-shadow: none; margin-bottom: 10px;">Your Listing</button>
+                            <span class="no-cost-text" style="margin-bottom: 30px; display: block;">You cannot claim your own food</span>
                         <?php endif; ?>
                         
                         <div class="stats-row-small">
@@ -578,6 +577,54 @@ $expiryTimeJS = date('Y-m-d\TH:i:s', strtotime($food['expiry_time']));
             </form>
         </div>
     </div>
+
+    <!-- Complain Modal -->
+    <div id="complainModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="modal-content" style="background: white; padding: 30px; border-radius: 20px; width: 90%; max-width: 500px; box-shadow: 0 10px 40px rgba(0,0,0,0.2);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; font-size: 1.5rem; color: #1e293b;">Report an Issue</h3>
+                <button id="closeComplainModalBtn" style="background: none; border: none; font-size: 1.5rem; color: #64748b; cursor: pointer;">&times;</button>
+            </div>
+            <form action="process_complaint.php" method="POST">
+                <input type="hidden" name="food_id" value="<?php echo $food['id']; ?>">
+                <input type="hidden" name="accused_id" value="<?php echo $food['donor_id']; ?>">
+                
+                <div style="margin-bottom: 20px;">
+                    <label for="complaint_text" style="display: block; font-weight: 600; color: #475569; margin-bottom: 8px;">What's the issue?</label>
+                    <textarea name="complaint_text" id="complaint_text" required rows="4" style="width: 100%; border: 1px solid #cbd5e1; border-radius: 12px; padding: 10px 12px; font-family: inherit; font-size: 0.95rem; box-sizing: border-box; resize: vertical;" placeholder="Please describe the issue in detail..."></textarea>
+                    <p style="font-size: 0.8rem; color: #94a3b8; margin-top: 5px; margin-bottom: 0;">This will be directly sent to the system administrator.</p>
+                </div>
+                
+                <div style="display: flex; justify-content: flex-end; gap: 15px;">
+                    <button type="button" id="cancelComplainBtn" style="padding: 10px 20px; border-radius: 50px; border: 1px solid #e2e8f0; background: #ffffff; color: #475569; font-weight: 600; cursor: pointer;">Cancel</button>
+                    <button type="submit" style="padding: 10px 24px; border-radius: 50px; border: none; background: #ef4444; color: white; font-weight: 600; cursor: pointer;">Submit Report</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <?php if(isset($_GET['success'])): ?>
+    <div id="successToast" style="position: fixed; top: 20px; right: 20px; background: var(--primary-green); color: white; padding: 15px 25px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 9999; display: flex; align-items: center; gap: 10px; font-weight: 600; animation: slideInToast 0.5s ease forwards;">
+        <i class="fa-solid fa-circle-check" style="font-size: 1.2rem;"></i>
+        <?php echo htmlspecialchars($_GET['success']); ?>
+    </div>
+    <style>
+        @keyframes slideInToast {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+    <script>
+        setTimeout(() => {
+            const toast = document.getElementById('successToast');
+            if(toast) {
+                toast.style.transition = 'opacity 0.5s ease';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 500);
+            }
+        }, 4000);
+    </script>
+    <?php endif; ?>
 
     <script src="../assets/js/script.js"></script>
     <script>
@@ -654,6 +701,32 @@ $expiryTimeJS = date('Y-m-d\TH:i:s', strtotime($food['expiry_time']));
             claimModal.addEventListener('click', (e) => {
                 if (e.target === claimModal) {
                     claimModal.style.display = 'none';
+                }
+            });
+        }
+        
+        // Complain Modal Logic
+        const complainModal = document.getElementById('complainModal');
+        const openComplainModalBtn = document.getElementById('openComplainModalBtn');
+        const closeComplainModalBtn = document.getElementById('closeComplainModalBtn');
+        const cancelComplainBtn = document.getElementById('cancelComplainBtn');
+        
+        if (openComplainModalBtn && complainModal) {
+            openComplainModalBtn.addEventListener('click', () => {
+                complainModal.style.display = 'flex';
+            });
+            
+            closeComplainModalBtn.addEventListener('click', () => {
+                complainModal.style.display = 'none';
+            });
+            
+            cancelComplainBtn.addEventListener('click', () => {
+                complainModal.style.display = 'none';
+            });
+            
+            complainModal.addEventListener('click', (e) => {
+                if (e.target === complainModal) {
+                    complainModal.style.display = 'none';
                 }
             });
         }

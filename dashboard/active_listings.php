@@ -13,23 +13,12 @@ $conn = new mysqli('localhost', 'root', '', 'share_plate');
 function getFreshnessColor($createdAt, $expiryTime, $category) {
     $now = time();
     $expiry = strtotime($expiryTime);
-    $created = strtotime($createdAt);
     
-    if ($expiry - $now <= 24 * 3600) {
-        return 'red';
-    }
+    $hoursRemaining = ($expiry - $now) / 3600;
     
-    $hoursSinceCreation = ($now - $created) / 3600;
-    
-    if ($category === 'Other' || $category === 'Fresh Produce' || $category === 'Dairy & Eggs') {
-        if ($hoursSinceCreation <= 24) return 'green';
-        elseif ($hoursSinceCreation <= 48) return 'yellow';
-        else return 'red';
-    } else {
-        if ($hoursSinceCreation <= 12) return 'green';
-        elseif ($hoursSinceCreation <= 24) return 'yellow';
-        else return 'red';
-    }
+    if ($hoursRemaining <= 24) return 'red';
+    elseif ($hoursRemaining <= 48) return 'yellow';
+    else return 'green';
 }
 
 $donor_id = $_SESSION['user_id'];
@@ -86,8 +75,14 @@ if ($result && $result->num_rows > 0) {
                             ?>
                         </span>
                     </div>
-                    <div class="user-avatar">
-                        <i class="fa-solid fa-user"></i>
+                    <?php 
+                        $prefix = isset($root_prefix) ? $root_prefix : (basename($_SERVER['PHP_SELF']) == 'marketplace.php' ? '' : '../');
+                        $avatarUrl = !empty($_SESSION['profile_image']) ? $prefix . $_SESSION['profile_image'] : '';
+                    ?>
+                    <div class="user-avatar" style="<?php echo $avatarUrl ? 'background-image: url(\'' . htmlspecialchars($avatarUrl) . '\'); background-size: cover; background-position: center;' : ''; ?>">
+                        <?php if(!$avatarUrl): ?>
+                            <i class="fa-solid fa-user"></i>
+                        <?php endif; ?>
                     </div>
                 </a>
             </div>
@@ -120,7 +115,7 @@ if ($result && $result->num_rows > 0) {
                         $statusClass = 'status-' . $color;
                         $borderClass = 'border-' . $color;
                         $isExpired = (strtotime($item['expiry_time']) < time());
-                        $displayStatus = $isExpired ? 'EXPIRED' : (($color === 'red') ? 'EXPIRING SOON' : strtoupper($item['status']));
+                        $displayStatus = $isExpired ? 'EXPIRED' : (($color === 'red') ? 'URGENT' : (($color === 'yellow') ? 'EXPIRING SOON' : 'VERY FRESH'));
                         
                         $imgSrc = $item['image_path'] ? htmlspecialchars($item['image_path']) : '../assets/img/just-a-meal.png';
                     ?>

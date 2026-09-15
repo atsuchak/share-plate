@@ -18,15 +18,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message_text'], $_POS
     $message_text = trim($_POST['message_text']);
     
     // Verify user is part of this conversation
-    $verify_sql = "SELECT id FROM conversations WHERE id = ? AND (donor_id = ? OR requester_id = ?)";
-    $stmt = $conn->prepare($verify_sql);
-    $stmt->bind_param("iii", $conv_id, $user_id, $user_id);
+    if (isset($_SESSION['role_id']) && $_SESSION['role_id'] == 3) {
+        $verify_sql = "SELECT id FROM conversations WHERE id = ? AND requester_id = 0";
+        $stmt = $conn->prepare($verify_sql);
+        $stmt->bind_param("i", $conv_id);
+        $sender_id = 0; // System Admin
+    } else {
+        $verify_sql = "SELECT id FROM conversations WHERE id = ? AND (donor_id = ? OR requester_id = ?)";
+        $stmt = $conn->prepare($verify_sql);
+        $stmt->bind_param("iii", $conv_id, $user_id, $user_id);
+        $sender_id = $user_id;
+    }
     $stmt->execute();
     if ($stmt->get_result()->num_rows > 0 && !empty($message_text)) {
         // Insert message
         $insert = "INSERT INTO messages (conversation_id, sender_id, message_text) VALUES (?, ?, ?)";
         $istmt = $conn->prepare($insert);
-        $istmt->bind_param("iis", $conv_id, $user_id, $message_text);
+        $istmt->bind_param("iis", $conv_id, $sender_id, $message_text);
         $istmt->execute();
         
         // Update conversation timestamp
@@ -39,17 +47,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['message_text'], $_POS
     exit();
 }
 
-// Fetch all conversations for this user
-$sql = "SELECT c.*, f.title as food_title, f.image_path, 
-        u_donor.full_name as donor_name, u_req.full_name as req_name 
-        FROM conversations c
-        JOIN food_listings f ON c.food_id = f.id
-        JOIN users u_donor ON c.donor_id = u_donor.id
-        JOIN users u_req ON c.requester_id = u_req.id
-        WHERE c.donor_id = ? OR c.requester_id = ?
-        ORDER BY c.updated_at DESC";
-$stmt = $conn->prepare($sql);
-$stmt->bind_param("ii", $user_id, $user_id);
+// Fetch all conversations for this user or admin
+if (isset($_SESSION['role_id']) && $_SESSION['role_id'] == 3) {
+    $sql = "SELECT c.*, f.title as food_title, f.image_path, 
+            u_donor.full_name as donor_name, 'System Admin' as req_name 
+            FROM conversations c
+            JOIN food_listings f ON c.food_id = f.id
+            JOIN users u_donor ON c.donor_id = u_donor.id
+            WHERE c.requester_id = 0
+            ORDER BY c.updated_at DESC";
+    $stmt = $conn->prepare($sql);
+} else {
+    $sql = "SELECT c.*, f.title as food_title, f.image_path, 
+            u_donor.full_name as donor_name, IFNULL(u_req.full_name, 'System Admin') as req_name 
+            FROM conversations c
+            JOIN food_listings f ON c.food_id = f.id
+            JOIN users u_donor ON c.donor_id = u_donor.id
+            LEFT JOIN users u_req ON c.requester_id = u_req.id
+            WHERE c.donor_id = ? OR c.requester_id = ?
+            ORDER BY c.updated_at DESC";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ii", $user_id, $user_id);
+}
 $stmt->execute();
 $conversations_result = $stmt->get_result();
 $conversations = [];
@@ -346,7 +365,15 @@ if ($active_conv_id) {
                             ?>
                         </span>
                     </div>
-                    <div class="user-avatar"><i class="fa-solid fa-user"></i></div>
+                    <?php 
+                        $prefix = isset($root_prefix) ? $root_prefix : (basename($_SERVER['PHP_SELF']) == 'marketplace.php' ? '' : '../');
+                        $avatarUrl = !empty($_SESSION['profile_image']) ? $prefix . $_SESSION['profile_image'] : '';
+                    ?>
+                    <div class="user-avatar" style="<?php echo $avatarUrl ? 'background-image: url(\'' . htmlspecialchars($avatarUrl) . '\'); background-size: cover; background-position: center;' : ''; ?>">
+                        <?php if(!$avatarUrl): ?>
+                            <i class="fa-solid fa-user"></i>
+                        <?php endif; ?>
+                    </div>
                 </a>
             </div>
         </header>
@@ -398,7 +425,7 @@ if ($active_conv_id) {
                                 <div style="text-align: center; color: #94a3b8; margin-top: 50px;">Start the conversation...</div>
                             <?php else: ?>
                                 <?php foreach($messages as $m): 
-                                    $is_me = ($m['sender_id'] == $user_id);
+                                    $is_me = (isset($_SESSION['role_id']) && $_SESSION['role_id'] == 3) ? ($m['sender_id'] == 0) : ($m['sender_id'] == $user_id);
                                 ?>
                                     <div class="msg-bubble <?php echo $is_me ? 'msg-sent' : 'msg-received'; ?>">
                                         <?php echo nl2br(htmlspecialchars($m['message_text'])); ?>
