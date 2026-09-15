@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         die("Connection failed: " . $conn->connect_error);
     }
 
-    $stmt = $conn->prepare("SELECT id, full_name, password_hash, role_id, status FROM users WHERE email = ?");
+    $stmt = $conn->prepare("SELECT id, full_name, password_hash, role_id, status, profile_image FROM users WHERE email = ?");
     $stmt->bind_param("s", $email);
     $stmt->execute();
     $result = $stmt->get_result();
@@ -28,6 +28,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['full_name'] = $user['full_name'];
             $_SESSION['role_id'] = $user['role_id'];
+            $_SESSION['profile_image'] = $user['profile_image'] ?? null;
+            
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+            if ($ip === '::1') $ip = '127.0.0.1';
+            $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+            $conn->query("INSERT INTO login_logs (user_id, role_id, ip_address, user_agent, status) VALUES ({$user['id']}, {$user['role_id']}, '$ip', '$ua', 'Success')");
             
             // Redirect to dashboard
             header("Location: ../dashboard/dashboard.php");
@@ -49,12 +55,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $_SESSION['role_id'] = 3; // Role 3 for admin
             $_SESSION['is_admin'] = true;
             
+            $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+            if ($ip === '::1') $ip = '127.0.0.1';
+            $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+            $conn->query("INSERT INTO login_logs (user_id, role_id, ip_address, user_agent, status) VALUES ({$admin['id']}, 3, '$ip', '$ua', 'Success')");
+            
             header("Location: ../dashboard/dashboard.php");
             exit();
         }
     }
 
-    // If both fail
+    // If both fail, log failed attempt if user exists? 
+    // Usually we don't know the ID if it fails without matching email. We can skip failed for now or just log email. 
+    // We'll skip failed for now to keep it simple.
+    
     $_SESSION['error_message'] = "Invalid email or password.";
     header("Location: login.php");
     exit();

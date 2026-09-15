@@ -280,8 +280,14 @@ if (!isset($_SESSION['user_id'])) {
                             ?>
                         </span>
                     </div>
-                    <div class="user-avatar">
-                        <i class="fa-solid fa-user"></i>
+                    <?php 
+                        $prefix = isset($root_prefix) ? $root_prefix : (basename($_SERVER['PHP_SELF']) == 'marketplace.php' ? '' : '../');
+                        $avatarUrl = !empty($_SESSION['profile_image']) ? $prefix . $_SESSION['profile_image'] : '';
+                    ?>
+                    <div class="user-avatar" style="<?php echo $avatarUrl ? 'background-image: url(\'' . htmlspecialchars($avatarUrl) . '\'); background-size: cover; background-position: center;' : ''; ?>">
+                        <?php if(!$avatarUrl): ?>
+                            <i class="fa-solid fa-user"></i>
+                        <?php endif; ?>
                     </div>
                 </a>
             </div>

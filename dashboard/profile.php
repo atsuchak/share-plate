@@ -7,39 +7,77 @@ if (!isset($_SESSION['user_id'])) {
 $conn = new mysqli('localhost', 'root', '', 'share_plate');
 
 $user_id = $_SESSION['user_id'];
-$stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$user = $stmt->get_result()->fetch_assoc();
-$stmt->close();
+// Compute stats
+$is_admin = (isset($_SESSION['role_id']) && $_SESSION['role_id'] == 3);
 
-// Restore actual name to session in case it was overwritten during testing
-if ($user && isset($user['full_name'])) {
-    $_SESSION['full_name'] = $user['full_name'];
+if ($is_admin) {
+    $stmt = $conn->prepare("SELECT * FROM admin WHERE id = ?");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $user = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+    
+    $user['role_id'] = 3;
+    $role = 'Administrator';
+    
+    $stats_donations = $conn->query("SELECT COUNT(*) FROM users")->fetch_row()[0];
+    $stats_active = $conn->query("SELECT COUNT(*) FROM food_listings")->fetch_row()[0];
+    $recent_donations = [];
+} else {
+    $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+    $stmt->bind_param("i", $user_id);
+    $stmt->execute();
+    $user = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    $role = ($user['role_id'] == 1) ? 'Donor' : 'Receiver';
+
+    if ($user['role_id'] == 1) {
+        $stmt = $conn->prepare("SELECT COUNT(*) as total_donations FROM food_listings WHERE donor_id = ?");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $stats_donations = $stmt->get_result()->fetch_assoc()['total_donations'];
+        $stmt->close();
+
+        $stmt = $conn->prepare("SELECT COUNT(*) as total_active FROM food_listings WHERE donor_id = ? AND status = 'Available'");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $stats_active = $stmt->get_result()->fetch_assoc()['total_active'];
+        $stmt->close();
+
+        $recent_result = $conn->query("SELECT * FROM food_listings WHERE donor_id = $user_id ORDER BY created_at DESC LIMIT 3");
+        $recent_donations = [];
+        if ($recent_result && $recent_result->num_rows > 0) {
+            while($row = $recent_result->fetch_assoc()) {
+                $recent_donations[] = $row;
+            }
+        }
+    } else {
+        $stmt = $conn->prepare("SELECT COUNT(*) as total_claims FROM food_claims WHERE receiver_id = ?");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $stats_donations = $stmt->get_result()->fetch_assoc()['total_claims'];
+        $stmt->close();
+
+        $stmt = $conn->prepare("SELECT COUNT(*) as approved_claims FROM food_claims WHERE receiver_id = ? AND status = 'Approved'");
+        $stmt->bind_param("i", $user_id);
+        $stmt->execute();
+        $stats_active = $stmt->get_result()->fetch_assoc()['approved_claims'];
+        $stmt->close();
+
+        $recent_result = $conn->query("SELECT fl.*, fc.created_at as claimed_at FROM food_claims fc JOIN food_listings fl ON fc.food_id = fl.id WHERE fc.receiver_id = $user_id ORDER BY fc.created_at DESC LIMIT 3");
+        $recent_donations = [];
+        if ($recent_result && $recent_result->num_rows > 0) {
+            while($row = $recent_result->fetch_assoc()) {
+                $row['created_at'] = $row['claimed_at'];
+                $recent_donations[] = $row;
+            }
+        }
+    }
 }
 
-$role = ($user['role_id'] == 1) ? 'Donor' : 'Receiver';
-
-// Compute stats
-$stmt = $conn->prepare("SELECT COUNT(*) as total_donations FROM food_listings WHERE donor_id = ?");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$stats_donations = $stmt->get_result()->fetch_assoc()['total_donations'];
-$stmt->close();
-
-$stmt = $conn->prepare("SELECT COUNT(*) as total_active FROM food_listings WHERE donor_id = ? AND status = 'Available'");
-$stmt->bind_param("i", $user_id);
-$stmt->execute();
-$stats_active = $stmt->get_result()->fetch_assoc()['total_active'];
-$stmt->close();
-
-// Fetch recent donations for timeline
-$recent_result = $conn->query("SELECT * FROM food_listings WHERE donor_id = $user_id ORDER BY created_at DESC LIMIT 3");
-$recent_donations = [];
-if ($recent_result && $recent_result->num_rows > 0) {
-    while($row = $recent_result->fetch_assoc()) {
-        $recent_donations[] = $row;
-    }
+if ($user && isset($user['full_name'])) {
+    $_SESSION['full_name'] = $user['full_name'];
 }
 ?>
 <!DOCTYPE html>
@@ -103,9 +141,36 @@ if ($recent_result && $recent_result->num_rows > 0) {
             color: var(--primary-green);
             box-shadow: 0 10px 25px rgba(0,0,0,0.1);
             border: 4px solid #ffffff;
-            margin-top: -80px; /* Pulls it up */
+            margin-top: -80px;
             flex-shrink: 0;
+            position: relative;
         }
+        .avatar-overlay-btn {
+            position: absolute;
+            bottom: -5px;
+            right: -5px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary-green);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1.1rem;
+            border: 3px solid #ffffff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+            transition: transform 0.2s, background 0.2s;
+            z-index: 10;
+        }
+        .avatar-overlay-btn:hover {
+            transform: scale(1.1);
+        }
+        .avatar-overlay-btn.remove-mode {
+            background: #ef4444;
+        }
+        .d-none { display: none !important; }
         .profile-title-area {
             flex: 1;
             padding-bottom: 10px;
@@ -426,8 +491,14 @@ if ($recent_result && $recent_result->num_rows > 0) {
                             ?>
                         </span>
                     </div>
-                    <div class="user-avatar">
-                        <i class="fa-solid fa-user"></i>
+                    <?php 
+                        $prefix = isset($root_prefix) ? $root_prefix : (basename($_SERVER['PHP_SELF']) == 'marketplace.php' ? '' : '../');
+                        $avatarUrl = !empty($_SESSION['profile_image']) ? $prefix . $_SESSION['profile_image'] : '';
+                    ?>
+                    <div class="user-avatar" style="<?php echo $avatarUrl ? 'background-image: url(\'' . htmlspecialchars($avatarUrl) . '\'); background-size: cover; background-position: center;' : ''; ?>">
+                        <?php if(!$avatarUrl): ?>
+                            <i class="fa-solid fa-user"></i>
+                        <?php endif; ?>
                     </div>
                 </a>
             </div>
@@ -441,17 +512,30 @@ if ($recent_result && $recent_result->num_rows > 0) {
                     <div class="cover-photo">
                     </div>
                     <div class="profile-header-card">
-                        <div class="profile-avatar-xl">
-                            <i class="fa-solid fa-user"></i>
+                        <?php 
+                        $hasImage = !empty($user['profile_image']);
+                        $avatarStyle = $hasImage ? "background-image: url('../" . htmlspecialchars($user['profile_image']) . "'); background-size: cover; background-position: center;" : "";
+                        ?>
+                        <div class="profile-avatar-xl" id="profileAvatar" style="<?php echo $avatarStyle; ?>">
+                            <i class="fa-solid fa-user" id="defaultAvatarIcon" style="<?php echo $hasImage ? 'display:none;' : ''; ?>"></i>
+                            
+                            <label for="img-upload" class="avatar-overlay-btn <?php echo $hasImage ? 'd-none' : ''; ?>" id="btnUploadIcon" title="Upload Image">
+                                <i class="fa-solid fa-camera"></i>
+                            </label>
+                            
+                            <div class="avatar-overlay-btn remove-mode <?php echo !$hasImage ? 'd-none' : ''; ?>" id="btnRemoveIcon" title="Remove Image" onclick="removeProfileImage()">
+                                <i class="fa-solid fa-trash"></i>
+                            </div>
                         </div>
+                        <input type="file" id="img-upload" style="display: none;" accept="image/*" onchange="uploadProfileImage(this)">
+                        
                         <div class="profile-title-area">
                             <h1><?php echo htmlspecialchars($user['full_name']); ?></h1>
                             <div class="profile-badge">
                                 <i class="fa-solid fa-check-circle"></i> Verified <?php echo htmlspecialchars($role); ?>
                             </div>
                         </div>
-                        <div class="profile-header-actions">
-                            <button class="btn-edit"><i class="fa-solid fa-pen"></i> Edit Profile</button>
+                        <div class="profile-header-actions" id="toast-container" style="color:var(--primary-green); font-weight: 500;">
                         </div>
                     </div>
                 </div>
@@ -496,32 +580,34 @@ if ($recent_result && $recent_result->num_rows > 0) {
                             <div class="stat-card-premium">
                                 <i class="fa-solid fa-hand-holding-heart"></i>
                                 <div class="stat-value"><?php echo $stats_donations; ?></div>
-                                <div class="stat-label">Total Contributions</div>
+                                <div class="stat-label"><?php echo $is_admin ? 'Total Users' : ($user['role_id'] == 1 ? 'Total Contributions' : 'Total Claims'); ?></div>
                             </div>
                             <div class="stat-card-premium">
                                 <i class="fa-solid fa-utensils"></i>
                                 <div class="stat-value"><?php echo $stats_active; ?></div>
-                                <div class="stat-label">Active Listings</div>
+                                <div class="stat-label"><?php echo $is_admin ? 'Total Listings' : ($user['role_id'] == 1 ? 'Active Listings' : 'Approved Claims'); ?></div>
                             </div>
+                            <?php if(!$is_admin): ?>
                             <div class="stat-card-premium">
                                 <i class="fa-solid fa-seedling"></i>
                                 <div class="stat-value"><?php echo number_format($stats_donations * 2.5, 1); ?>kg</div>
                                 <div class="stat-label">CO2 Saved</div>
                             </div>
+                            <?php endif; ?>
                         </div>
 
                         <!-- Timeline -->
                         <div class="timeline-panel">
                             <h3>Recent Activity</h3>
                             <?php if (empty($recent_donations)): ?>
-                                <p style="color: #94a3b8; font-size: 0.95rem;">No recent activity yet. Make your first contribution!</p>
+                                <p style="color: #94a3b8; font-size: 0.95rem;"><?php echo $is_admin ? 'No recent activity.' : 'No recent activity yet. Make your first contribution!'; ?></p>
                             <?php else: ?>
                                 <div class="timeline">
                                     <?php foreach($recent_donations as $donation): ?>
                                     <div class="timeline-item">
                                         <div class="timeline-dot"></div>
                                         <div class="timeline-content">
-                                            <h4>Posted: <?php echo htmlspecialchars($donation['title']); ?></h4>
+                                            <h4><?php echo $user['role_id'] == 1 ? 'Posted:' : 'Claimed:'; ?> <?php echo htmlspecialchars($donation['title']); ?></h4>
                                             <p><?php echo date('F j, Y, g:i a', strtotime($donation['created_at'])); ?> &bull; <?php echo htmlspecialchars($donation['category']); ?></p>
                                         </div>
                                     </div>
@@ -552,6 +638,60 @@ if ($recent_result && $recent_result->num_rows > 0) {
                     icon.classList.add('fa-moon');
                 }
             });
+        }
+
+        function showToastMsg(msg, isError = false) {
+            const container = document.getElementById('toast-container');
+            container.style.color = isError ? '#ef4444' : 'var(--primary-green)';
+            container.innerText = msg;
+            setTimeout(() => { container.innerText = ''; }, 3000);
+        }
+
+        async function uploadProfileImage(input) {
+            if (!input.files || !input.files[0]) return;
+            let formData = new FormData();
+            formData.append('profile_image', input.files[0]);
+
+            try {
+                let res = await fetch('upload_profile_image.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                let data = await res.json();
+                if (data.success) {
+                    document.getElementById('profileAvatar').style.backgroundImage = `url('../${data.path}')`;
+                    document.getElementById('profileAvatar').style.backgroundSize = 'cover';
+                    document.getElementById('profileAvatar').style.backgroundPosition = 'center';
+                    document.getElementById('defaultAvatarIcon').style.display = 'none';
+                    document.getElementById('btnUploadIcon').classList.add('d-none');
+                    document.getElementById('btnRemoveIcon').classList.remove('d-none');
+                    showToastMsg('Profile image updated successfully.');
+                } else {
+                    showToastMsg(data.error || 'Upload failed.', true);
+                }
+            } catch (e) {
+                showToastMsg('Network error.', true);
+            }
+            input.value = ''; // reset
+        }
+
+        async function removeProfileImage() {
+            if(!confirm("Are you sure you want to remove your profile picture?")) return;
+            try {
+                let res = await fetch('remove_profile_image.php', { method: 'POST' });
+                let data = await res.json();
+                if (data.success) {
+                    document.getElementById('profileAvatar').style.backgroundImage = 'none';
+                    document.getElementById('defaultAvatarIcon').style.display = 'block';
+                    document.getElementById('btnUploadIcon').classList.remove('d-none');
+                    document.getElementById('btnRemoveIcon').classList.add('d-none');
+                    showToastMsg('Profile image removed.');
+                } else {
+                    showToastMsg(data.error || 'Remove failed.', true);
+                }
+            } catch (e) {
+                showToastMsg('Network error.', true);
+            }
         }
     </script>
 </body>

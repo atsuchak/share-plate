@@ -84,6 +84,10 @@ $stmt->bind_param("i", $user_id);
 $stmt->execute();
 $user = $stmt->get_result()->fetch_assoc();
 $stmt->close();
+
+if ($user && isset($user['full_name'])) {
+    $_SESSION['full_name'] = $user['full_name'];
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -300,8 +304,14 @@ $stmt->close();
                             ?>
                         </span>
                     </div>
-                    <div class="user-avatar">
-                        <i class="fa-solid fa-user"></i>
+                    <?php 
+                        $prefix = isset($root_prefix) ? $root_prefix : (basename($_SERVER['PHP_SELF']) == 'marketplace.php' ? '' : '../');
+                        $avatarUrl = !empty($_SESSION['profile_image']) ? $prefix . $_SESSION['profile_image'] : '';
+                    ?>
+                    <div class="user-avatar" style="<?php echo $avatarUrl ? 'background-image: url(\'' . htmlspecialchars($avatarUrl) . '\'); background-size: cover; background-position: center;' : ''; ?>">
+                        <?php if(!$avatarUrl): ?>
+                            <i class="fa-solid fa-user"></i>
+                        <?php endif; ?>
                     </div>
                 </a>
             </div>
@@ -388,7 +398,7 @@ $stmt->close();
                         <div class="setting-row" style="border-top: 1px solid #f1f5f9; margin-top: 10px; padding-top: 25px;">
                             <div class="setting-desc">
                                 <h4>Email Notifications</h4>
-                                <p>Receive updates when new food is posted</p>
+                                <p>Receive an email for all account notifications and updates</p>
                             </div>
                             <label class="toggle-switch">
                                 <input type="checkbox" name="email_notifications" <?php echo isset($user['email_notifications']) && $user['email_notifications'] ? 'checked' : ''; ?>>
